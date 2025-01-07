@@ -5,6 +5,8 @@
 
 #define NODES_LIMIT 1000
 #define EDGES_LIMIT 10000
+#define NODE_EDGE_LIMIT 100
+#define QUEUE_SIZE 10000
 
 typedef enum
 {
@@ -22,21 +24,24 @@ typedef enum
 
 typedef struct
 {
-    int id;
-    float output;
-    float bias;
-    ActivationFunction activationFunction;
-    NodeType type;
-} Node;
-
-typedef struct
-{
     int from;
     int to;
     float weight;
     bool enabled;
     int innovation;
 } Edge;
+
+typedef struct
+{
+    int id;
+    float output;
+    float bias;
+    ActivationFunction activationFunction;
+    NodeType type;
+
+    Edge *edges;
+    int edgeCount;
+} Node;
 
 typedef struct
 {

@@ -25,7 +25,7 @@ Genome load_genome(char *filename)
         fscanf(file, "%d ", &outputs[i]);
     }
 
-    Genome genome = createGenome(inputsCount, outputsCount);
+    Genome genome = createGenome(inputsCount, outputsCount, false, false);
 
     fscanf(file, "%d\n", &genome.nodeCount);
     for (int i = 0; i < genome.nodeCount; i++)
@@ -82,7 +82,14 @@ void printGenome(Genome genome)
 
     for (int i = 0; i < genome.edgeCount; i++)
     {
-        printf("Edge %d: %d -> %d status: %s\n", i, genome.edges[i].from, genome.edges[i].to, (genome.edges[i].enabled) ? "enabled" : "disabled");
+        printf("Edge %d: %d -> %d status: %s weight: %f\n", i, genome.edges[i].from, genome.edges[i].to, (genome.edges[i].enabled) ? "enabled" : "disabled", genome.edges[i].weight);
+    }
+
+    printf("Nodes:\n");
+
+    for (int i = 0; i < genome.nodeCount; i++)
+    {
+        printf("Node: %d bias: %f\n", i, genome.nodes[i].bias);
     }
 
     printf("Inputs:\n");
@@ -98,4 +105,9 @@ void printGenome(Genome genome)
     {
         printf("Node: %d\n", i);
     }
+}
+
+float get_random_numberf(float min, float max)
+{
+    return min + (max - min) * ((float)rand() / RAND_MAX);
 }

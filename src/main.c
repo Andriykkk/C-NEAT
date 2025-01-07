@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 #include <math.h>
 #include "defs.h"
 #include "neat.h"
@@ -10,8 +11,10 @@
 // TODO: add node deleting mutation
 // TODO: add creating new edges mutation
 // TODO: add mutation for crossover of separately edges, nodes and weights
+// TODO: make so that there always be way from input to output, even during mutations these connections cannot be deleted
 // TODO: add more different mutations
 // TODO: make so that it look how much each mutation affects the fitness and randomly choose the best one
+// TODO: optimise edges and remove types as i dont need them
 
 float sigmoidf(float x)
 {
@@ -61,11 +64,6 @@ void add_edge_mutation(Genome *genome, int innovation)
 	}
 }
 
-float get_random_numberf(float min, float max)
-{
-	return min + (max - min) * ((float)rand() / RAND_MAX);
-}
-
 void add_node_mutation(Genome *genome, bool disable_node, bool only_active, bool only_inactive)
 {
 	if (genome->nodeCount >= NODES_LIMIT)
@@ -108,18 +106,113 @@ void add_node_mutation(Genome *genome, bool disable_node, bool only_active, bool
 	genome->edges[genome->edgeCount++] = createEdge(new_node.id, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
 }
 
+void node_activation(Node node)
+{
+	switch (node.activationFunction)
+	{
+	case SIGMOID:
+		node.output = sigmoidf(node.output);
+		break;
+
+	case TANH:
+		node.output = tanhf(node.output);
+		break;
+	case LINEAR:
+	}
+}
+
 void feed_forward(Genome *genome, float *inputs)
 {
+	int *queue = malloc(sizeof(int) * QUEUE_SIZE);
+	int start_q = 0;
+	int end_q = 0;
+
+	int emptyOutputCount = genome->outputsCount;
+
+	for (int i = 0; i < genome->inputsCount; i++)
+	{
+		int input_id = genome->inputs[i];
+		genome->nodes[input_id].output = inputs[i];
+		queue[end_q++] = input_id;
+	}
+
+	// work until all outputs are full
+	while (emptyOutputCount > 0)
+	{
+		emptyOutputCount = genome->outputsCount;
+
+		// forward pass
+		for (int i = 0; i < genome->nodeCount; i++)
+		{
+			Node *current_node = &genome->nodes[queue[start_q++]];
+			current_node->output += current_node->bias;
+
+			for (int i = 0; i < current_node->edgeCount; i++)
+			{
+				Edge edge = current_node->edges[i];
+
+				node_activation(*current_node);
+				genome->nodes[edge.to].output += current_node->output * edge.weight;
+
+				queue[end_q++] = edge.to;
+			}
+		}
+
+		// check output
+		for (int i = 0; i < genome->outputsCount; i++)
+		{
+			int output_id = genome->outputs[i];
+			if (genome->nodes[output_id].output != 0)
+			{
+				emptyOutputCount--;
+			}
+		}
+	}
+}
+
+void test_feed_forward(Genome *genome, double seconds, float *inputs)
+{
+	clock_t start_time, end_time;
+	double elapsed_time;
+	int count = 0;
+	int secondsCount = 0;
+
+	start_time = clock();
+	while (1)
+	{
+		feed_forward(&genome, inputs);
+		count++;
+
+		end_time = clock();
+		elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+		if (elapsed_time >= seconds)
+		{
+			break;
+		}
+	}
+
+	printf("count: %d \n", count);
 }
 
 int main()
 {
-	Genome genome = createGenome(4, 4);
+	// srand(time(NULL));
+
+	Genome genome = createGenome(2, 2, true, true);
+	fill_nodes_edges(&genome);
+	float inputs[4] = {1.7f, 1.0f};
+	// feed_forward(&genome, inputs);
+
+	// for (int i = 0; i < genome.outputsCount; i++)
+	// {
+	// 	printf("output %d: %f \n", i, genome.nodes[genome.outputs[i]].output);
+	// }
+
 	// save_genome(&genome, "test.txt");
 
 	// Genome genome2 = load_genome("test.txt");
-	printGenome(genome);
+	// printGenome(genome);
 
-	printf("Hello World!, %d\n", genome.nodeCount);
 	return 0;
 }

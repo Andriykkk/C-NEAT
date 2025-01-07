@@ -1,5 +1,6 @@
 #include "neat.h"
 #include "defs.h"
+#include "utils.h"
 #include "stdbool.h"
 #include <stdlib.h>
 
@@ -10,6 +11,8 @@ Node createNode(int id, float bias, ActivationFunction activationFunction, NodeT
     node.bias = bias;
     node.activationFunction = activationFunction;
     node.type = type;
+    node.output = 0;
+    node.edges = malloc(sizeof(Edge));
     return node;
 }
 
@@ -24,7 +27,7 @@ Edge createEdge(int from, int to, float weight, bool enabled, int innovation)
     return edge;
 }
 
-Genome createGenome(int inputs, int outputs)
+Genome createGenome(int inputs, int outputs, bool randomBias, bool randomWeights)
 {
     Genome genome;
     genome.inputs = malloc(sizeof(int) * inputs);
@@ -41,26 +44,46 @@ Genome createGenome(int inputs, int outputs)
 
     for (int i = 0; i < inputs; i++)
     {
-        genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, 0, LINEAR, INPUT);
+        float bias = randomBias ? get_random_numberf(-1, 1) : 1e-5;
+        genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, bias, LINEAR, INPUT);
         genome.inputs[i] = genome.nodeCount - 1;
     }
 
     for (int i = 0; i < outputs; i++)
     {
-        genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, 0, LINEAR, OUTPUT);
+        float bias = randomBias ? get_random_numberf(-1, 1) : 1e-5;
+        genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, bias, LINEAR, OUTPUT);
         genome.outputs[i] = genome.nodeCount - 1;
     }
-    genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, 0, LINEAR, HIDDEN);
 
     for (int i = 0; i < inputs; i++)
     {
-        genome.edges[genome.edgeCount++] = createEdge(i, genome.nodeCount - 1, 0.5, true, genome.edgeCount - 1);
-    }
-
-    for (int i = genome.edgeCount; i < inputs + outputs; i++)
-    {
-        genome.edges[genome.edgeCount++] = createEdge(genome.nodeCount - 1, i, 0.5, true, genome.edgeCount - 1);
+        for (int j = 0; j < outputs; j++)
+        {
+            float weight = randomWeights ? get_random_numberf(-1, 1) : 1e-5;
+            genome.edges[genome.edgeCount++] = createEdge(genome.inputs[i], genome.outputs[j], weight, true, genome.edgeCount - 1);
+        }
     }
 
     return genome;
+}
+
+void fill_nodes_edges(Genome *genome)
+{
+    for (int i = 0; i < genome->nodeCount; i++)
+    {
+        Node *node = &genome->nodes[i];
+        node->edgeCount = 0;
+        node->edges = realloc(node->edges, sizeof(Edge));
+    }
+    for (int i = 0; i < genome->edgeCount; i++)
+    {
+        if (genome->edges[i].enabled)
+        {
+            int from_id = genome->edges[i].from;
+            Node *node = &genome->nodes[from_id];
+            node->edges = realloc(node->edges, sizeof(Edge) * (node->edgeCount + 1));
+            node->edges[node->edgeCount++] = genome->edges[i];
+        }
+    }
 }
