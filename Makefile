@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -g
 EXEC = main
-SOURCE = src/main.c
+SOURCE = src/main.c src/utils.c src/neat.c
 LIBS = -lm
 
 all: $(EXEC)

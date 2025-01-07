@@ -2,123 +2,16 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include "defs.h"
+#include "neat.h"
+#include "utils.h"
 
-#define NODES_LIMIT 1000
-#define EDGES_LIMIT 10000
-
-typedef enum
-{
-	LINEAR,
-	SIGMOID,
-	TANH
-} ActivationFunction;
-
-typedef enum
-{
-	INPUT,
-	OUTPUT,
-	HIDDEN
-} NodeType;
-
-typedef struct
-{
-	int id;
-	float output;
-	float bias;
-	ActivationFunction activationFunction;
-	NodeType type;
-} Node;
-
-typedef struct
-{
-	int from;
-	int to;
-	float weight;
-	bool enabled;
-	int innovation;
-} Edge;
-
-typedef struct
-{
-	Node *nodes;
-	Edge *edges;
-	Edge *sortedEdges;
-	int *inputs;
-	int *outputs;
-	int inputsCount;
-	int outputsCount;
-	int nodeCount;
-	int edgeCount;
-	float fitness;
-} Genome;
-
-typedef struct
-{
-	Genome *genomes;
-	int genomeCount;
-} Specie;
-
-Node createNode(int id, float bias, ActivationFunction activationFunction, NodeType type)
-{
-	Node node;
-	node.id = id;
-	node.bias = bias;
-	node.activationFunction = activationFunction;
-	node.type = type;
-	return node;
-}
-
-Edge createEdge(int from, int to, float weight, bool enabled, int innovation)
-{
-	Edge edge;
-	edge.from = from;
-	edge.to = to;
-	edge.weight = weight;
-	edge.enabled = enabled;
-	edge.innovation = innovation;
-	return edge;
-}
-
-Genome createGenome(int inputs, int outputs)
-{
-	Genome genome;
-	genome.inputs = malloc(sizeof(int) * inputs);
-	genome.outputs = malloc(sizeof(int) * outputs);
-	genome.inputsCount = inputs;
-	genome.outputsCount = outputs;
-	genome.nodeCount = 0;
-	genome.edgeCount = 0;
-	genome.fitness = 0;
-
-	genome.nodes = malloc(sizeof(Node) * NODES_LIMIT);
-	genome.edges = malloc(sizeof(Edge) * EDGES_LIMIT);
-	genome.sortedEdges = malloc(sizeof(Edge) * EDGES_LIMIT);
-
-	for (int i = 0; i < inputs; i++)
-	{
-		genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, 0, LINEAR, INPUT);
-		genome.inputs[i] = genome.nodeCount - 1;
-	}
-
-	for (int i = 0; i < outputs; i++)
-	{
-		genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, 0, LINEAR, OUTPUT);
-		genome.outputs[i] = genome.nodeCount - 1;
-	}
-	genome.nodes[genome.nodeCount++] = createNode(genome.nodeCount, 0, LINEAR, HIDDEN);
-
-	for (int i = 0; i < inputs; i++)
-	{
-		genome.edges[genome.edgeCount++] = createEdge(i, genome.nodeCount - 1, 0.5, true, genome.edgeCount - 1);
-	}
-
-	for (int i = genome.edgeCount; i < inputs + outputs; i++)
-	{
-		genome.edges[genome.edgeCount++] = createEdge(genome.nodeCount - 1, i, 0.5, true, genome.edgeCount - 1);
-	}
-
-	return genome;
-}
+// TODO: add mutation for activating and mutating edge and deactivating and mutating random node bias
+// TODO: add node deleting mutation
+// TODO: add creating new edges mutation
+// TODO: add mutation for crossover of separately edges, nodes and weights
+// TODO: add more different mutations
+// TODO: make so that it look how much each mutation affects the fitness and randomly choose the best one
 
 float sigmoidf(float x)
 {
@@ -143,36 +36,88 @@ void add_edge_mutation(Genome *genome, int innovation)
 	{
 		to_node = rand() % genome->nodeCount;
 		from_node = rand() % genome->nodeCount;
+
+		if (genome->nodes[from_node].type != OUTPUT || genome->nodes[to_node].type == INPUT)
+		{
+			valid = true;
+
+			for (int i = 0; i < genome->edgeCount; i++)
+			{
+				if (genome->edges[i].from == from_node && genome->edges[i].to == to_node)
+				{
+					valid = false;
+					break;
+				}
+			}
+		}
+
+		attempts++;
+	}
+
+	if (valid)
+	{
+		float weight = (float)rand() / RAND_MAX * 2 - 1;
+		genome->edges[genome->edgeCount++] = createEdge(from_node, to_node, weight, true, genome->edgeCount - 1);
 	}
 }
 
-void printGenome(Genome genome)
+float get_random_numberf(float min, float max)
 {
-	printf("Edged:\n");
+	return min + (max - min) * ((float)rand() / RAND_MAX);
+}
 
-	for (int i = 0; i < genome.nodeCount - 1; i++)
+void add_node_mutation(Genome *genome, bool disable_node, bool only_active, bool only_inactive)
+{
+	if (genome->nodeCount >= NODES_LIMIT)
+		return;
+
+	int edge_index = rand() % genome->edgeCount;
+
+	int attempts = 100;
+	if (only_active)
 	{
-		printf("Edge %d: %d -> %d\n", i, genome.edges[i].from, genome.edges[i].to);
+		while (!genome->edges[edge_index].enabled && attempts > 0)
+		{
+			edge_index = rand() % genome->edgeCount;
+			attempts--;
+		}
+	}
+	else if (only_inactive)
+	{
+		while (genome->edges[edge_index].enabled && attempts > 0)
+		{
+			edge_index = rand() % genome->edgeCount;
+			attempts--;
+		}
 	}
 
-	printf("Inputs:\n");
-
-	for (int i = 0; i < genome.inputsCount; i++)
+	if (attempts == 0)
 	{
-		printf("Node: %d\n", i);
+		return;
 	}
 
-	printf("Outputs:\n");
-
-	for (int i = 0; i < genome.outputsCount; i++)
+	if (disable_node)
 	{
-		printf("Node: %d\n", i);
+		genome->edges[edge_index].enabled = false;
 	}
+
+	Node new_node = createNode(genome->nodeCount, get_random_numberf(-1, 1), LINEAR, HIDDEN);
+	genome->nodes[genome->nodeCount++] = new_node;
+
+	genome->edges[genome->edgeCount++] = createEdge(genome->edges[edge_index].from, new_node.id, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
+	genome->edges[genome->edgeCount++] = createEdge(new_node.id, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
+}
+
+void feed_forward(Genome *genome, float *inputs)
+{
 }
 
 int main()
 {
 	Genome genome = createGenome(4, 4);
+	// save_genome(&genome, "test.txt");
+
+	// Genome genome2 = load_genome("test.txt");
 	printGenome(genome);
 
 	printf("Hello World!, %d\n", genome.nodeCount);
