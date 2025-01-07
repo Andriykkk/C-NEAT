@@ -7,6 +7,8 @@
 #include "neat.h"
 #include "utils.h"
 
+// TODO: add struct for whole population and that also contain information about species
+// TODO: add function that divide genomes into species
 // TODO: add mutation for activating and mutating edge and deactivating and mutating random node bias
 // TODO: add node deleting mutation
 // TODO: add creating new edges mutation
@@ -180,7 +182,7 @@ void test_feed_forward(Genome *genome, double seconds, float *inputs)
 	start_time = clock();
 	while (1)
 	{
-		feed_forward(&genome, inputs);
+		feed_forward(genome, inputs);
 		count++;
 
 		end_time = clock();
