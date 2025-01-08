@@ -7,7 +7,10 @@
 #include "neat.h"
 #include "utils.h"
 
-// TODO: add struct for whole population and that also contain information about species
+// TODO: add function that calculate fitness of each genome
+// TODO: add function to mutate genome
+// TODO: add function that divide genomes into species and save them into struct
+// TODO: add function to crossover genomes
 // TODO: add function that divide genomes into species
 // TODO: add mutation for activating and mutating edge and deactivating and mutating random node bias
 // TODO: add node deleting mutation
@@ -17,6 +20,12 @@
 // TODO: add more different mutations
 // TODO: make so that it look how much each mutation affects the fitness and randomly choose the best one
 // TODO: optimise edges and remove types as i dont need them
+
+typedef struct
+{
+	Genome *genomes;
+	int genomesCount;
+} Population;
 
 float sigmoidf(float x)
 {
