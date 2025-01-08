@@ -7,9 +7,8 @@
 #include "neat.h"
 #include "utils.h"
 
-// TODO: add function that calculate fitness of each genome
 // TODO: add function to mutate genome
-// TODO: add function that divide genomes into species and save them into struct
+// TODO: add function that divide genomes(find genomic distance) into species and save them into struct
 // TODO: add function to crossover genomes
 // TODO: add function that divide genomes into species
 // TODO: add mutation for activating and mutating edge and deactivating and mutating random node bias
@@ -26,6 +25,31 @@ typedef struct
 	Genome *genomes;
 	int genomesCount;
 } Population;
+
+typedef struct
+{
+	int start;
+	int end;
+	char *parameters;
+	int parametersCount;
+	void (*func_ptr)();
+} MutationFunction;
+
+MutationFunction init_mutation_function(int start, int end, short *parameters, int parametersCount, void (*func_ptr)())
+{
+	MutationFunction mutation_function;
+	mutation_function.start = start;
+	mutation_function.end = end;
+	mutation_function.parametersCount = parametersCount;
+	mutation_function.parameters = malloc(sizeof(short) * parametersCount);
+	for (int i = 0; i < parametersCount; i++)
+	{
+		mutation_function.parameters[i] = parameters[i];
+	}
+
+	mutation_function.func_ptr = func_ptr;
+	return mutation_function;
+}
 
 float sigmoidf(float x)
 {
@@ -181,6 +205,22 @@ void feed_forward(Genome *genome, float *inputs)
 	}
 }
 
+void test_genome_fitness(Genome *genome, float *inputs, float *expected_outputs, int inputsCount)
+{
+	int count = genome->outputsCount * inputsCount;
+
+	for (int i = 0; i < inputsCount; i++)
+	{
+		feed_forward(genome, inputs);
+		for (int j = 0; j < genome->outputsCount; j++)
+		{
+			genome->fitness += pow(genome->nodes[genome->outputs[j]].output - expected_outputs[j], 2);
+		}
+	}
+
+	genome->fitness /= count;
+}
+
 void test_feed_forward(Genome *genome, double seconds, float *inputs)
 {
 	clock_t start_time, end_time;
@@ -206,9 +246,32 @@ void test_feed_forward(Genome *genome, double seconds, float *inputs)
 	printf("count: %d \n", count);
 }
 
+void mutate_genome(Genome *genome)
+{
+}
+
+void call_mutation_function(MutationFunction *mutation_function, Genome *genome)
+{
+	switch (mutation_function->parametersCount)
+	{
+	case 0:
+		mutation_function->func_ptr(genome);
+	case 1:
+		mutation_function->func_ptr(genome, mutation_function->parameters[0]);
+	case 2:
+		mutation_function->func_ptr(genome, mutation_function->parameters[0], mutation_function->parameters[1]);
+	case 3:
+		mutation_function->func_ptr(genome, mutation_function->parameters[0], mutation_function->parameters[1], mutation_function->parameters[2]);
+	case 4:
+		mutation_function->func_ptr(genome, mutation_function->parameters[0], mutation_function->parameters[1], mutation_function->parameters[2], mutation_function->parameters[3]);
+	}
+}
+
 int main()
 {
 	// srand(time(NULL));
+	MutationFunction *mutation_functions = malloc(sizeof(MutationFunction) * 5);
+	mutation_functions[0] = init_mutation_function(0, 0, NULL, 0, add_edge_mutation);
 
 	Genome genome = createGenome(2, 2, true, true);
 	fill_nodes_edges(&genome);
