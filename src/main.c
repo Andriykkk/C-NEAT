@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
+#include <limits.h>
 #include <math.h>
 #include "defs.h"
 #include "neat.h"
@@ -10,6 +11,7 @@
 // TODO: add function to mutate genome
 // TODO: add function that divide genomes(find genomic distance) into species and save them into struct
 // TODO: add function to crossover genomes
+// TODO: add proper function to find inactive edges, not randomly look aroung for inactive or save inactive
 // TODO: add function that divide genomes into species
 // TODO: add mutation for activating and mutating edge and deactivating and mutating random node bias
 // TODO: add node deleting mutation
@@ -26,31 +28,6 @@ typedef struct
 	int genomesCount;
 } Population;
 
-typedef struct
-{
-	int start;
-	int end;
-	char *parameters;
-	int parametersCount;
-	void (*func_ptr)();
-} MutationFunction;
-
-MutationFunction init_mutation_function(int start, int end, short *parameters, int parametersCount, void (*func_ptr)())
-{
-	MutationFunction mutation_function;
-	mutation_function.start = start;
-	mutation_function.end = end;
-	mutation_function.parametersCount = parametersCount;
-	mutation_function.parameters = malloc(sizeof(short) * parametersCount);
-	for (int i = 0; i < parametersCount; i++)
-	{
-		mutation_function.parameters[i] = parameters[i];
-	}
-
-	mutation_function.func_ptr = func_ptr;
-	return mutation_function;
-}
-
 float sigmoidf(float x)
 {
 	return 1 / (1 + exp(-x));
@@ -61,7 +38,7 @@ float tanhf(float x)
 	return (expf(x) - expf(-x)) / (expf(x) + expf(-x));
 }
 
-void add_edge_mutation(Genome *genome, int innovation)
+void add_edge_mutation(Genome *genome)
 {
 	if (genome->edgeCount >= EDGES_LIMIT)
 		return;
@@ -99,7 +76,7 @@ void add_edge_mutation(Genome *genome, int innovation)
 	}
 }
 
-void add_node_mutation(Genome *genome, bool disable_node, bool only_active, bool only_inactive)
+void add_node_mutation(Genome *genome, short disable_node, short only_active, short only_inactive)
 {
 	if (genome->nodeCount >= NODES_LIMIT)
 		return;
@@ -139,6 +116,37 @@ void add_node_mutation(Genome *genome, bool disable_node, bool only_active, bool
 
 	genome->edges[genome->edgeCount++] = createEdge(genome->edges[edge_index].from, new_node.id, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
 	genome->edges[genome->edgeCount++] = createEdge(new_node.id, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
+}
+
+unsigned int *mutations_range;
+unsigned int mutations_count = 3;
+
+unsigned int get_random_unsigned_int()
+{
+	unsigned int random_value = 0;
+
+	random_value = (rand() & 0xFFFF) << 16;
+	random_value |= (rand() & 0xFFFF);
+
+	return random_value;
+}
+
+void call_random_mutation(Genome *genome, int *mutations_range)
+{
+	unsigned int random_index = get_random_unsigned_int();
+
+	if (random_index >= mutations_range[0] && random_index < mutations_range[1])
+	{
+		add_edge_mutation(genome);
+	}
+	else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
+	{
+		add_node_mutation(genome, 0, 1, 0);
+	}
+	else if (random_index >= mutations_range[2] && random_index <= mutations_range[3])
+	{
+		add_node_mutation(genome, 1, 0, 1);
+	}
 }
 
 void node_activation(Node node)
@@ -250,31 +258,26 @@ void mutate_genome(Genome *genome)
 {
 }
 
-void call_mutation_function(MutationFunction *mutation_function, Genome *genome)
+void init_mutation_range()
 {
-	switch (mutation_function->parametersCount)
+	mutations_range = malloc(sizeof(unsigned int) * (mutations_count + 1));
+	unsigned int range = UINT_MAX / mutations_count + 1;
+
+	mutations_range[0] = 0;
+	mutations_range[mutations_count] = UINT_MAX;
+	for (int i = 1; i < mutations_count; i++)
 	{
-	case 0:
-		mutation_function->func_ptr(genome);
-	case 1:
-		mutation_function->func_ptr(genome, mutation_function->parameters[0]);
-	case 2:
-		mutation_function->func_ptr(genome, mutation_function->parameters[0], mutation_function->parameters[1]);
-	case 3:
-		mutation_function->func_ptr(genome, mutation_function->parameters[0], mutation_function->parameters[1], mutation_function->parameters[2]);
-	case 4:
-		mutation_function->func_ptr(genome, mutation_function->parameters[0], mutation_function->parameters[1], mutation_function->parameters[2], mutation_function->parameters[3]);
+		mutations_range[i] = range * i;
 	}
 }
 
 int main()
 {
-	// srand(time(NULL));
-	MutationFunction *mutation_functions = malloc(sizeof(MutationFunction) * 5);
-	mutation_functions[0] = init_mutation_function(0, 0, NULL, 0, add_edge_mutation);
-
+	srand(time(NULL));
 	Genome genome = createGenome(2, 2, true, true);
+	init_mutation_range();
 	fill_nodes_edges(&genome);
+
 	float inputs[4] = {1.7f, 1.0f};
 	// feed_forward(&genome, inputs);
 
