@@ -1,9 +1,11 @@
 #include "neat.h"
 #include "defs.h"
 #include "utils.h"
+#include "mutations.h"
 #include "stdbool.h"
 #include <stdlib.h>
 #include <limits.h>
+#include <stdio.h>
 
 Node createNode(int id, float bias, ActivationFunction activationFunction, NodeType type)
 {
@@ -77,7 +79,7 @@ Genome copyGenome(Genome *original)
     copy.outputsCount = original->outputsCount;
     copy.nodeCount = original->nodeCount;
     copy.edgeCount = original->edgeCount;
-    copy.fitness = 0;
+    copy.fitness = original->fitness;
 
     copy.nodes = malloc(sizeof(Node) * NODES_LIMIT);
     copy.edges = malloc(sizeof(Edge) * EDGES_LIMIT);
@@ -122,15 +124,19 @@ void freeGenome(Genome *genome)
 {
     free(genome->inputs);
     free(genome->outputs);
+    for (int i = 0; i < genome->nodeCount; i++)
+    {
+        free(genome->nodes[i].edges);
+    }
     free(genome->nodes);
     free(genome->edges);
-    free(genome);
 }
 
 Population createPopulation(int genomesCount, int inputs, int outputs, bool randomBias, bool randomWeights)
 {
     Population population;
     population.genomes = malloc(sizeof(Genome) * genomesCount);
+    population.genomesCount = genomesCount;
     for (int i = 0; i < genomesCount; i++)
     {
         population.genomes[i] = createGenome(inputs, outputs, randomBias, randomWeights);
@@ -172,6 +178,11 @@ void init_mutation_range()
     {
         mutations_range[i] = range * i;
     }
+}
+
+void free_mutation_range()
+{
+    free(mutations_range);
 }
 
 void call_random_mutation(Genome *genome)

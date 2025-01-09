@@ -8,4 +8,5 @@ Population createPopulation(int genomesCount, int inputs, int outputs, bool rand
 void freeGenome(Genome *g);
 void fill_nodes_edges(Genome *genome);
 void init_mutation_range();
+void free_mutation_range();
 void call_random_mutation(Genome *genome);

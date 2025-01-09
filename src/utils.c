@@ -111,3 +111,13 @@ float get_random_numberf(float min, float max)
 {
     return min + (max - min) * ((float)rand() / RAND_MAX);
 }
+
+unsigned int get_random_unsigned_int()
+{
+    unsigned int random_value = 0;
+
+    random_value = (rand() & 0xFFFF) << 16;
+    random_value |= (rand() & 0xFFFF);
+
+    return random_value;
+}

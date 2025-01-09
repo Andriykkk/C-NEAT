@@ -7,6 +7,7 @@
 #include "defs.h"
 #include "neat.h"
 #include "utils.h"
+#include "mutations.h"
 
 // TODO: add function that divide genomes(find genomic distance) into species and save them into struct
 // TODO: add function to crossover genomes
@@ -31,96 +32,6 @@ float sigmoidf(float x)
 float tanhf(float x)
 {
 	return (expf(x) - expf(-x)) / (expf(x) + expf(-x));
-}
-
-void add_edge_mutation(Genome *genome)
-{
-	if (genome->edgeCount >= EDGES_LIMIT)
-		return;
-
-	int to_node, from_node;
-	bool valid = false;
-	int attempts = 0;
-
-	while (attempts < 100 && !valid)
-	{
-		to_node = rand() % genome->nodeCount;
-		from_node = rand() % genome->nodeCount;
-
-		if (genome->nodes[from_node].type != OUTPUT || genome->nodes[to_node].type == INPUT)
-		{
-			valid = true;
-
-			for (int i = 0; i < genome->edgeCount; i++)
-			{
-				if (genome->edges[i].from == from_node && genome->edges[i].to == to_node)
-				{
-					valid = false;
-					break;
-				}
-			}
-		}
-
-		attempts++;
-	}
-
-	if (valid)
-	{
-		float weight = (float)rand() / RAND_MAX * 2 - 1;
-		genome->edges[genome->edgeCount++] = createEdge(from_node, to_node, weight, true, genome->edgeCount - 1);
-	}
-}
-
-void add_node_mutation(Genome *genome, short disable_node, short only_active, short only_inactive)
-{
-	if (genome->nodeCount >= NODES_LIMIT)
-		return;
-
-	int edge_index = rand() % genome->edgeCount;
-
-	int attempts = 100;
-	if (only_active)
-	{
-		while (!genome->edges[edge_index].enabled && attempts > 0)
-		{
-			edge_index = rand() % genome->edgeCount;
-			attempts--;
-		}
-	}
-	else if (only_inactive)
-	{
-		while (genome->edges[edge_index].enabled && attempts > 0)
-		{
-			edge_index = rand() % genome->edgeCount;
-			attempts--;
-		}
-	}
-
-	if (attempts == 0)
-	{
-		return;
-	}
-
-	if (disable_node)
-	{
-		genome->edges[edge_index].enabled = false;
-	}
-
-	Node new_node = createNode(genome->nodeCount, get_random_numberf(-1, 1), LINEAR, HIDDEN);
-	genome->nodes[genome->nodeCount++] = new_node;
-
-	genome->edges[genome->edgeCount++] = createEdge(genome->edges[edge_index].from, new_node.id, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
-	genome->edges[genome->edgeCount++] = createEdge(new_node.id, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
-}
-
-unsigned int get_random_unsigned_int()
-{
-	unsigned int random_value = 0;
-
-	random_value = (rand() & 0xFFFF) << 16;
-	random_value |= (rand() & 0xFFFF);
-
-	return random_value;
 }
 
 void node_activation(Node node)
@@ -185,9 +96,27 @@ void feed_forward(Genome *genome, float *inputs)
 			}
 		}
 	}
+
+	free(queue);
 }
 
-void test_genome_fitness(Genome *genome, float *inputs, float *expected_outputs, int inputsCount)
+void empty_outputs(Genome *genome)
+{
+	for (int i = 0; i < genome->outputsCount; i++)
+	{
+		genome->nodes[genome->outputs[i]].output = 0;
+	}
+}
+
+void empty_inputs(Genome *genome)
+{
+	for (int i = 0; i < genome->inputsCount; i++)
+	{
+		genome->nodes[genome->inputs[i]].output = 0;
+	}
+}
+
+void test_genome_fitness(Genome *genome, float *inputs, float *expected_outputs, int inputsCount, int batchSize)
 {
 	int count = genome->outputsCount * inputsCount;
 
@@ -198,36 +127,39 @@ void test_genome_fitness(Genome *genome, float *inputs, float *expected_outputs,
 		{
 			genome->fitness += pow(genome->nodes[genome->outputs[j]].output - expected_outputs[j], 2);
 		}
+		empty_outputs(genome);
 	}
 
-	genome->fitness /= count;
+	genome->fitness /= (count * batchSize);
 }
 
-void test_population_fitness(Population *population, float *inputs, float *expected_outputs, int inputsCount)
+void test_population_fitness(Population *population, float *inputs, float *expected_outputs, int inputsCount, int batchSize)
 {
 	for (int i = 0; i < population->genomesCount; i++)
 	{
-		test_genome_fitness(&population->genomes[i], inputs, expected_outputs, inputsCount);
+		test_genome_fitness(&population->genomes[i], inputs, expected_outputs, inputsCount, batchSize);
 	}
 }
 
 void copy_best_and_mutate_genome(Population *population)
 {
-	int min_fitness = 0;
+	int min_fitness_id = 0;
+	float min_fitness = population->genomes[0].fitness;
 	for (int i = 0; i < population->genomesCount; i++)
 	{
 		if (population->genomes[i].fitness < min_fitness)
 		{
-			min_fitness = i;
+			min_fitness = population->genomes[i].fitness;
+			min_fitness_id = i;
 		}
 	}
 
 	for (int i = 0; i < population->genomesCount; i++)
 	{
-		if (i != min_fitness)
+		if (i != min_fitness_id)
 		{
 			freeGenome(&population->genomes[i]);
-			population->genomes[i] = copyGenome(&population->genomes[min_fitness]);
+			population->genomes[i] = copyGenome(&population->genomes[min_fitness_id]);
 			call_random_mutation(&population->genomes[i]);
 		}
 	}
@@ -258,15 +190,49 @@ void test_feed_forward(Genome *genome, double seconds, float *inputs)
 	printf("count: %d \n", count);
 }
 
+void freePopulation(Population *population)
+{
+	for (int i = 0; i < population->genomesCount; i++)
+	{
+		freeGenome(&population->genomes[i]);
+	}
+
+	free(population->genomes);
+	// free(population);
+}
+
 int main()
 {
 	srand(time(NULL));
 	init_mutation_range();
 
-	Genome genome = createGenome(2, 2, true, true);
-	fill_nodes_edges(&genome);
+	Population population = createPopulation(2, 2, 1, true, true);
+	float xor_inputs[4][2] = {
+		{0, 0},
+		{0, 1},
+		{1, 0},
+		{1, 1}};
+	float xor_outputs[4][1] = {{0}, {1}, {1}, {0}};
 
-	float inputs[4] = {1.7f, 1.0f};
+	for (int i = 0; i < 100000; i++)
+	{
+		test_population_fitness(&population, xor_inputs[0], xor_outputs[0], 4, 4);
+		test_population_fitness(&population, xor_inputs[1], xor_outputs[1], 4, 4);
+		test_population_fitness(&population, xor_inputs[2], xor_outputs[2], 4, 4);
+		test_population_fitness(&population, xor_inputs[3], xor_outputs[3], 4, 4);
+		if (i % 10000 == 0)
+		{
+			printf("%f %d %d \n", population.genomes[0].fitness, population.genomes[0].edgeCount, population.genomes[0].nodeCount);
+		}
+		copy_best_and_mutate_genome(&population);
+	}
+
+	freePopulation(&population);
+	free_mutation_range();
+	// Genome genome = createGenome(2, 2, true, true);
+	// fill_nodes_edges(&genome);
+
+	// float inputs[4] = {1.7f, 1.0f};
 	// feed_forward(&genome, inputs);
 
 	// for (int i = 0; i < genome.outputsCount; i++)
