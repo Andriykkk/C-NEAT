@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "stdbool.h"
 #include <stdlib.h>
+#include <limits.h>
 
 Node createNode(int id, float bias, ActivationFunction activationFunction, NodeType type)
 {
@@ -40,7 +41,6 @@ Genome createGenome(int inputs, int outputs, bool randomBias, bool randomWeights
 
     genome.nodes = malloc(sizeof(Node) * NODES_LIMIT);
     genome.edges = malloc(sizeof(Edge) * EDGES_LIMIT);
-    genome.sortedEdges = malloc(sizeof(Edge) * EDGES_LIMIT);
 
     for (int i = 0; i < inputs; i++)
     {
@@ -65,7 +65,77 @@ Genome createGenome(int inputs, int outputs, bool randomBias, bool randomWeights
         }
     }
 
+    fill_nodes_edges(&genome);
+
     return genome;
+}
+
+Genome copyGenome(Genome *original)
+{
+    Genome copy;
+    copy.inputsCount = original->inputsCount;
+    copy.outputsCount = original->outputsCount;
+    copy.nodeCount = original->nodeCount;
+    copy.edgeCount = original->edgeCount;
+    copy.fitness = 0;
+
+    copy.nodes = malloc(sizeof(Node) * NODES_LIMIT);
+    copy.edges = malloc(sizeof(Edge) * EDGES_LIMIT);
+    copy.inputs = malloc(sizeof(int) * copy.inputsCount);
+    copy.outputs = malloc(sizeof(int) * copy.outputsCount);
+
+    for (int i = 0; i < copy.nodeCount; i++)
+    {
+        copy.nodes[i].id = original->nodes[i].id;
+        copy.nodes[i].output = original->nodes[i].output;
+        copy.nodes[i].bias = original->nodes[i].bias;
+        copy.nodes[i].activationFunction = original->nodes[i].activationFunction;
+        copy.nodes[i].type = original->nodes[i].type;
+        copy.nodes[i].edgeCount = original->nodes[i].edgeCount;
+
+        copy.nodes[i].edges = malloc(sizeof(Edge) * original->nodes[i].edgeCount);
+        for (int j = 0; j < original->nodes[i].edgeCount; j++)
+        {
+            copy.nodes[i].edges[j] = original->nodes[i].edges[j];
+        }
+    }
+
+    for (int i = 0; i < copy.edgeCount; i++)
+    {
+        copy.edges[i] = original->edges[i];
+    }
+
+    for (int i = 0; i < copy.inputsCount; i++)
+    {
+        copy.inputs[i] = original->inputs[i];
+    }
+
+    for (int i = 0; i < copy.outputsCount; i++)
+    {
+        copy.outputs[i] = original->outputs[i];
+    }
+
+    return copy;
+}
+
+void freeGenome(Genome *genome)
+{
+    free(genome->inputs);
+    free(genome->outputs);
+    free(genome->nodes);
+    free(genome->edges);
+    free(genome);
+}
+
+Population createPopulation(int genomesCount, int inputs, int outputs, bool randomBias, bool randomWeights)
+{
+    Population population;
+    population.genomes = malloc(sizeof(Genome) * genomesCount);
+    for (int i = 0; i < genomesCount; i++)
+    {
+        population.genomes[i] = createGenome(inputs, outputs, randomBias, randomWeights);
+    }
+    return population;
 }
 
 void fill_nodes_edges(Genome *genome)
@@ -85,5 +155,39 @@ void fill_nodes_edges(Genome *genome)
             node->edges = realloc(node->edges, sizeof(Edge) * (node->edgeCount + 1));
             node->edges[node->edgeCount++] = genome->edges[i];
         }
+    }
+}
+
+unsigned int *mutations_range;
+unsigned int mutations_count = 3;
+
+void init_mutation_range()
+{
+    mutations_range = malloc(sizeof(unsigned int) * (mutations_count + 1));
+    unsigned int range = UINT_MAX / mutations_count + 1;
+
+    mutations_range[0] = 0;
+    mutations_range[mutations_count] = UINT_MAX;
+    for (int i = 1; i < mutations_count; i++)
+    {
+        mutations_range[i] = range * i;
+    }
+}
+
+void call_random_mutation(Genome *genome)
+{
+    unsigned int random_index = get_random_unsigned_int();
+
+    if (random_index >= mutations_range[0] && random_index < mutations_range[1])
+    {
+        add_edge_mutation(genome);
+    }
+    else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
+    {
+        add_node_mutation(genome, 0, 1, 0);
+    }
+    else if (random_index >= mutations_range[2] && random_index <= mutations_range[3])
+    {
+        add_node_mutation(genome, 1, 0, 1);
     }
 }

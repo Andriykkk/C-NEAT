@@ -8,11 +8,12 @@
 #include "neat.h"
 #include "utils.h"
 
-// TODO: add function to mutate genome
 // TODO: add function that divide genomes(find genomic distance) into species and save them into struct
 // TODO: add function to crossover genomes
 // TODO: add proper function to find inactive edges, not randomly look aroung for inactive or save inactive
 // TODO: add function that divide genomes into species
+// TODO: add backpropagation
+// TODO: create proper populations, where it look at the history of mutations and fitness, create genome childrens, check them and take best ones
 // TODO: add mutation for activating and mutating edge and deactivating and mutating random node bias
 // TODO: add node deleting mutation
 // TODO: add creating new edges mutation
@@ -21,12 +22,6 @@
 // TODO: add more different mutations
 // TODO: make so that it look how much each mutation affects the fitness and randomly choose the best one
 // TODO: optimise edges and remove types as i dont need them
-
-typedef struct
-{
-	Genome *genomes;
-	int genomesCount;
-} Population;
 
 float sigmoidf(float x)
 {
@@ -118,9 +113,6 @@ void add_node_mutation(Genome *genome, short disable_node, short only_active, sh
 	genome->edges[genome->edgeCount++] = createEdge(new_node.id, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
 }
 
-unsigned int *mutations_range;
-unsigned int mutations_count = 3;
-
 unsigned int get_random_unsigned_int()
 {
 	unsigned int random_value = 0;
@@ -129,24 +121,6 @@ unsigned int get_random_unsigned_int()
 	random_value |= (rand() & 0xFFFF);
 
 	return random_value;
-}
-
-void call_random_mutation(Genome *genome, int *mutations_range)
-{
-	unsigned int random_index = get_random_unsigned_int();
-
-	if (random_index >= mutations_range[0] && random_index < mutations_range[1])
-	{
-		add_edge_mutation(genome);
-	}
-	else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
-	{
-		add_node_mutation(genome, 0, 1, 0);
-	}
-	else if (random_index >= mutations_range[2] && random_index <= mutations_range[3])
-	{
-		add_node_mutation(genome, 1, 0, 1);
-	}
 }
 
 void node_activation(Node node)
@@ -229,6 +203,36 @@ void test_genome_fitness(Genome *genome, float *inputs, float *expected_outputs,
 	genome->fitness /= count;
 }
 
+void test_population_fitness(Population *population, float *inputs, float *expected_outputs, int inputsCount)
+{
+	for (int i = 0; i < population->genomesCount; i++)
+	{
+		test_genome_fitness(&population->genomes[i], inputs, expected_outputs, inputsCount);
+	}
+}
+
+void copy_best_and_mutate_genome(Population *population)
+{
+	int min_fitness = 0;
+	for (int i = 0; i < population->genomesCount; i++)
+	{
+		if (population->genomes[i].fitness < min_fitness)
+		{
+			min_fitness = i;
+		}
+	}
+
+	for (int i = 0; i < population->genomesCount; i++)
+	{
+		if (i != min_fitness)
+		{
+			freeGenome(&population->genomes[i]);
+			population->genomes[i] = copyGenome(&population->genomes[min_fitness]);
+			call_random_mutation(&population->genomes[i]);
+		}
+	}
+}
+
 void test_feed_forward(Genome *genome, double seconds, float *inputs)
 {
 	clock_t start_time, end_time;
@@ -254,28 +258,12 @@ void test_feed_forward(Genome *genome, double seconds, float *inputs)
 	printf("count: %d \n", count);
 }
 
-void mutate_genome(Genome *genome)
-{
-}
-
-void init_mutation_range()
-{
-	mutations_range = malloc(sizeof(unsigned int) * (mutations_count + 1));
-	unsigned int range = UINT_MAX / mutations_count + 1;
-
-	mutations_range[0] = 0;
-	mutations_range[mutations_count] = UINT_MAX;
-	for (int i = 1; i < mutations_count; i++)
-	{
-		mutations_range[i] = range * i;
-	}
-}
-
 int main()
 {
 	srand(time(NULL));
-	Genome genome = createGenome(2, 2, true, true);
 	init_mutation_range();
+
+	Genome genome = createGenome(2, 2, true, true);
 	fill_nodes_edges(&genome);
 
 	float inputs[4] = {1.7f, 1.0f};

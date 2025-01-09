@@ -47,7 +47,6 @@ typedef struct
 {
     Node *nodes;
     Edge *edges;
-    Edge *sortedEdges;
     int *inputs;
     int *outputs;
     int inputsCount;
@@ -56,6 +55,12 @@ typedef struct
     int edgeCount;
     float fitness;
 } Genome;
+
+typedef struct
+{
+    Genome *genomes;
+    int genomesCount;
+} Population;
 
 typedef struct
 {
