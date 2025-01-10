@@ -120,7 +120,7 @@ Genome copyGenome(Genome *original)
     return copy;
 }
 
-void freeGenome(Genome *genome)
+void free_genome(Genome *genome)
 {
     free(genome->inputs);
     free(genome->outputs);
@@ -165,7 +165,7 @@ void fill_nodes_edges(Genome *genome)
 }
 
 unsigned int *mutations_range;
-unsigned int mutations_count = 3;
+unsigned int mutations_count = 9;
 
 void init_mutation_range()
 {
@@ -193,12 +193,42 @@ void call_random_mutation(Genome *genome)
     {
         add_edge_mutation(genome);
     }
+
+    // add node mutations and disable original edge
     else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
     {
         add_node_mutation(genome, 0, 1, 0);
     }
-    else if (random_index >= mutations_range[2] && random_index <= mutations_range[3])
+    else if (random_index >= mutations_range[2] && random_index < mutations_range[3])
+    {
+        add_node_mutation(genome, 0, 0, 1);
+    }
+    else if (random_index >= mutations_range[3] && random_index < mutations_range[4])
+    {
+        add_node_mutation(genome, 0, 1, 1);
+    }
+
+    // // add node mutations and dont disable original edge
+    else if (random_index >= mutations_range[4] && random_index <= mutations_range[5])
+    {
+        add_node_mutation(genome, 1, 1, 0);
+    }
+    else if (random_index >= mutations_range[5] && random_index <= mutations_range[6])
     {
         add_node_mutation(genome, 1, 0, 1);
+    }
+    else if (random_index >= mutations_range[6] && random_index <= mutations_range[7])
+    {
+        add_node_mutation(genome, 1, 1, 1);
+    }
+
+    // update
+    else if (random_index >= mutations_range[7] && random_index <= mutations_range[8])
+    {
+        shift_edge_mutation(genome);
+    }
+    else if (random_index >= mutations_range[8] && random_index <= mutations_range[9])
+    {
+        shift_node_mutation(genome);
     }
 }

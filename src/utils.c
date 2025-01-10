@@ -76,7 +76,7 @@ void save_genome(Genome *genome, char *filename)
     fclose(file);
 }
 
-void printGenome(Genome genome)
+void print_genome(Genome genome)
 {
     printf("Edged:\n");
 
