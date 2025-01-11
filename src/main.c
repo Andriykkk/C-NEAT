@@ -10,18 +10,14 @@
 #include "mutations.h"
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
 
 #include <fcntl.h>
 
-// TODO: after mutations need to remake edges for nodes
-// TODO: add full saving and loading
 // TODO: add neat for simple game
+// TODO: make function that get one genome for feed forward, for simple game
 // TODO: make bigram
 // TODO: after deleting remake innovation as right now it calculated from amount of nodes and edges
 // TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
@@ -29,10 +25,12 @@
 // TODO: add function to crossover genomes
 // TODO: add proper innovation number as it allow us to compare networks
 // TODO: add more mutations
-// edge: disable, enable, /delete/,
-// node:  /delete/,
-// crossover: nodes, edges
+// 		edge: disable, enable, /delete/,
+// 		node:  /delete/,
+// 		crossover: nodes, edges
 // TODO: add functions to save Population and load it
+// TODO: add adjactable input size, mutation ranges, several mutations per generation, how many times loop work in one generation
+// TODO: add backpropagation for each generation like in rnn
 // TODO: add proper function to find inactive edges, not randomly look aroung for inactive or save inactive
 // TODO: add function that divide genomes into species
 // TODO: add backpropagation
@@ -186,6 +184,7 @@ void copy_best_and_mutate_genome(Population *population)
 			free_genome(&population->genomes[i]);
 			population->genomes[i] = copyGenome(&population->genomes[min_fitness_id]);
 			call_random_mutation(&population->genomes[i]);
+			fill_nodes_edges(&population->genomes[i]);
 		}
 	}
 }
@@ -382,204 +381,6 @@ char *itoa(int num)
 	static char buffer[20];
 	snprintf(buffer, sizeof(buffer), "%d", num);
 	return buffer;
-}
-
-int save_fully(Population population, char *name)
-{
-	struct stat st = {0};
-	if (stat(name, &st) == -1)
-	{
-
-		if (mkdir(name, 0700))
-		{
-			perror("Error creating directory");
-			return 1;
-		}
-	}
-
-	char *filename = malloc(strlen(name) + strlen("/v0.0.1") + 1);
-	if (!filename)
-	{
-		perror("Memory allocation failed");
-		return 1;
-	}
-
-	snprintf(filename, strlen(name) + strlen("/v0.0.1") + 1, "%s/v0.0.1", name);
-
-	if (stat(filename, &st) == -1)
-	{
-		if (mkdir(filename, 0700))
-		{
-			perror("Error creating directory");
-			return 1;
-		}
-	}
-
-	// save mutation range
-	char *mutation_range_filename = malloc(strlen(filename) + strlen("/mutation_range") + 1);
-	if (!mutation_range_filename)
-	{
-		perror("Memory allocation failed");
-		return 1;
-	}
-	strcpy(mutation_range_filename, filename);
-	strcat(mutation_range_filename, "/mutation_range.txt");
-
-	FILE *mutation_range_file = fopen(mutation_range_filename, "w");
-	fprintf(mutation_range_file, "%d\n", mutations_count);
-	for (int i = 0; i < mutations_count + 1; i++)
-	{
-		fprintf(mutation_range_file, "%u ", mutations_range[i]);
-	}
-	fclose(mutation_range_file);
-	free(mutation_range_filename);
-
-	// save the population
-	char *population_filename = malloc(strlen(filename) + strlen("/population") + 1);
-	if (!population_filename)
-	{
-		perror("Memory allocation failed");
-		return 1;
-	}
-	strcpy(population_filename, filename);
-	strcat(population_filename, "/population.txt");
-
-	FILE *population_file = fopen(population_filename, "w");
-	fprintf(population_file, "%d\n", population.genomesCount);
-	fclose(population_file);
-	free(population_filename);
-	for (int i = 0; i < population.genomesCount; i++)
-	{
-		char *genomes_filename = malloc(strlen(filename) + 100);
-		if (!genomes_filename)
-		{
-			perror("Memory allocation failed");
-			return 1;
-		}
-		strcpy(genomes_filename, filename);
-		strcat(genomes_filename, "/genome-");
-		strcat(genomes_filename, itoa(i));
-		strcat(genomes_filename, ".txt");
-		save_genome(&population.genomes[i], genomes_filename);
-		free(genomes_filename);
-	}
-
-	return 0;
-}
-
-Population load_fully(char *name)
-{
-
-	struct stat st = {0};
-	if (stat(name, &st) == -1)
-	{
-		perror("Directory does not exist");
-		exit(1);
-	}
-
-	char *filename = malloc(strlen(name) + strlen("/v0.0.1") + 1);
-	if (!filename)
-	{
-		perror("Memory allocation failed");
-		exit(1);
-	}
-	snprintf(filename, strlen(name) + strlen("/v0.0.1") + 1, "%s/v0.0.1", name);
-	if (stat(filename, &st) == -1)
-	{
-		perror("Version directory does not exist");
-		free(filename);
-		exit(1);
-	}
-
-	// load mutation range
-	char *mutation_range_filename = malloc(strlen(filename) + strlen("/mutation_range.txt") + 1);
-	if (!mutation_range_filename)
-	{
-		perror("Memory allocation failed");
-		free(filename);
-		exit(1);
-	}
-	strcpy(mutation_range_filename, filename);
-	strcat(mutation_range_filename, "/mutation_range.txt");
-
-	FILE *mutation_range_file = fopen(mutation_range_filename, "r");
-	if (!mutation_range_file)
-	{
-		perror("Error opening mutation range file");
-		free(mutation_range_filename);
-		free(filename);
-		exit(1);
-	}
-
-	int mutations_count;
-	fscanf(mutation_range_file, "%d\n", &mutations_count);
-
-	unsigned int *mutations_range = malloc((mutations_count + 1) * sizeof(unsigned int));
-	for (int i = 0; i < mutations_count + 1; i++)
-	{
-		fscanf(mutation_range_file, "%u", &mutations_range[i]);
-	}
-	fclose(mutation_range_file);
-	free(mutation_range_filename);
-
-	// Load population data
-	Population population;
-
-	char *population_filename = malloc(strlen(filename) + strlen("/population.txt") + 1);
-	if (!population_filename)
-	{
-		perror("Memory allocation failed");
-		free(filename);
-		free(mutations_range);
-		exit(1);
-	}
-	strcpy(population_filename, filename);
-	strcat(population_filename, "/population.txt");
-
-	FILE *population_file = fopen(population_filename, "r");
-	if (!population_file)
-	{
-		perror("Error opening population file");
-		free(population_filename);
-		free(filename);
-		free(mutations_range);
-		exit(1);
-	}
-
-	fscanf(population_file, "%d", &population.genomesCount);
-	fclose(population_file);
-	free(population_filename);
-
-	// Load genomes
-	population.genomes = malloc(population.genomesCount * sizeof(Genome));
-
-	for (int i = 0; i < population.genomesCount; i++)
-	{
-		char *genomes_filename = malloc(strlen(filename) + 100);
-		if (!genomes_filename)
-		{
-			perror("Memory allocation failed");
-			free(filename);
-			free(mutations_range);
-			exit(1);
-		}
-		strcpy(genomes_filename, filename);
-		strcat(genomes_filename, "/genome-");
-
-		char str[20];
-		sprintf(str, "%d", i);
-		strcat(genomes_filename, str);
-		strcat(genomes_filename, ".txt");
-
-		// Load the genome from the file
-		population.genomes[i] = load_genome(genomes_filename);
-		free(genomes_filename);
-	}
-
-	free(filename);
-	free(mutations_range);
-
-	return population;
 }
 
 int main()
