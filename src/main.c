@@ -16,8 +16,6 @@
 
 #include <fcntl.h>
 
-// TODO: add neat for simple game
-// TODO: make function that get one genome for feed forward, for simple game
 // TODO: make bigram
 // TODO: after deleting remake innovation as right now it calculated from amount of nodes and edges
 // TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
@@ -287,7 +285,7 @@ void draw_board(int caret_pos, int ball_x, int ball_y)
 }
 
 // Main game loop
-int run_game()
+int run_game(Genome *genome)
 {
 	int caret_pos = WIDTH / 2;
 	int ball_x = rand() % WIDTH;
@@ -357,7 +355,38 @@ int run_game()
 		// 	}
 		// }
 
-		int move = rand() % 3;
+		float *ball_position = malloc(sizeof(float));
+		if (ball_x < caret_pos)
+		{
+			ball_position[0] = -1;
+		}
+		else if (ball_x > caret_pos + 1)
+		{
+			ball_position[0] = 1;
+		}
+		else
+		{
+			ball_position[0] = 0;
+		}
+
+		feed_forward(genome, ball_position);
+
+		int move = 0;
+		int max_move = 0;
+		for (int i = 0; i < 3; i++)
+		{
+			if (genome->outputs[i] > max_move)
+			{
+				max_move = i;
+			}
+		}
+		if (max_move == 0)
+			move = 0;
+		else if (max_move == 1)
+			move = 1;
+		else if (max_move == 2)
+			move = 2;
+
 		if (move == 0 && caret_pos > 0)
 		{
 			caret_pos--;
@@ -366,6 +395,7 @@ int run_game()
 		{
 			caret_pos++;
 		}
+		empty_outputs(genome);
 
 		// usleep(100000); // Slow down the game loop, so the caret can be moved multiple times
 	}
@@ -376,41 +406,43 @@ int run_game()
 	return score;
 }
 
-char *itoa(int num)
-{
-	static char buffer[20];
-	snprintf(buffer, sizeof(buffer), "%d", num);
-	return buffer;
-}
-
 int main()
 {
 	srand(time(NULL));
 	init_mutation_range();
 
-	Population population = load_fully("test");
+	Population population = createPopulation(1000, 1, 3, true, true);
+	int max_score = 0;
 
-	run_game();
+	for (int i = 0; i < 500; i++)
+	{
+		for (int j = 0; j < population.genomesCount; j++)
+		{
+			int score = run_game(&population.genomes[0]);
+			if (score > max_score)
+			{
+				max_score = score;
+				printf("New max score: %d\n", max_score);
+			}
 
-	// Population population = createPopulation(3, 1, 3, true, true);
-	printf("Created population %f\n", population.genomes[0].edges[0].weight);
+			if (score != 0)
+				population.genomes[j].fitness = 1.0 / (float)score;
+			else
+				population.genomes[j].fitness = 1.0;
+		}
+
+		if (i % 100 == 0)
+		{
+			printf("%f %d %d \n", population.genomes[0].fitness, population.genomes[0].edgeCount, population.genomes[0].nodeCount);
+		}
+		copy_best_and_mutate_genome(&population);
+	}
+
+	// Population population = load_fully("test");
 	// if (save_fully(population, "test"))
 	// {
 	// 	printf("Error saving population\n");
 	// 	return 1;
-	// }
-
-	// for (int i = 0; i < 10000; i++)
-	// {
-	// 	test_population_fitness(&population, xor_inputs[0], xor_outputs[0], 4, 4);
-	// 	test_population_fitness(&population, xor_inputs[1], xor_outputs[1], 4, 4);
-	// 	test_population_fitness(&population, xor_inputs[2], xor_outputs[2], 4, 4);
-	// 	test_population_fitness(&population, xor_inputs[3], xor_outputs[3], 4, 4);
-	// 	if (i % 1000 == 0)
-	// 	{
-	// 		printf("%f %d %d \n", population.genomes[0].fitness, population.genomes[0].edgeCount, population.genomes[0].nodeCount);
-	// 	}
-	// 	copy_best_and_mutate_genome(&population);
 	// }
 
 	// free_population(&population);

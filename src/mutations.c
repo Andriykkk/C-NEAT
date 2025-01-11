@@ -9,12 +9,13 @@
 int *find_disabled_edges(Genome *genome)
 {
     int *disabled_edges = malloc(genome->edgeCount / 100);
+    int index = 0;
 
     for (int i = 0; i < genome->edgeCount; i++)
     {
         if (!genome->edges[i].enabled)
         {
-            disabled_edges[i] = i;
+            disabled_edges[index++] = i;
         }
         if (i >= genome->edgeCount / 100)
         {

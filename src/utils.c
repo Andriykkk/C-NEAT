@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <string.h>
 #include "neat.h"
 
 Genome load_genome(char *filename)
@@ -324,4 +325,11 @@ unsigned int get_random_unsigned_int()
     random_value |= (rand() & 0xFFFF);
 
     return random_value;
+}
+
+char *itoa(int num)
+{
+    static char buffer[100];
+    snprintf(buffer, sizeof(buffer), "%d", num);
+    return buffer;
 }
