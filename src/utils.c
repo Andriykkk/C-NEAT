@@ -47,6 +47,11 @@ Genome load_genome(char *filename)
 void save_genome(Genome *genome, char *filename)
 {
     FILE *file = fopen(filename, "w");
+    if (file == NULL)
+    {
+        printf("Error opening file\n");
+        return;
+    }
 
     fprintf(file, "%d\n", genome->inputsCount);
     for (int i = 0; i < genome->inputsCount; i++)

@@ -8,8 +8,21 @@
 #include "neat.h"
 #include "utils.h"
 #include "mutations.h"
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <termios.h>
+
+#include <fcntl.h>
+
+// TODO: after mutations need to remake edges for nodes
+// TODO: add full saving and loading
 // TODO: add neat for simple game
+// TODO: make bigram
 // TODO: after deleting remake innovation as right now it calculated from amount of nodes and edges
 // TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
 // TODO: add function that divide genomes(find genomic distance) into species and save them into struct
@@ -23,6 +36,8 @@
 // TODO: add proper function to find inactive edges, not randomly look aroung for inactive or save inactive
 // TODO: add function that divide genomes into species
 // TODO: add backpropagation
+// TODO: make adjastable mutations range, look what works best in history and use only them
+// TODO: add several mutations throught one generation as genome growth, also make it adjastable as i dont know which factor of log i should use
 // TODO: create proper populations, where it look at the history of mutations and fitness, create genome childrens, check them and take best ones
 // TODO: add mutation for activating and mutating edge and deactivating and mutating random node bias
 // TODO: add node deleting mutation
@@ -211,34 +226,394 @@ void free_population(Population *population)
 	// free(population);
 }
 
+#define WIDTH 20
+#define HEIGHT 10
+
+int kbhit(void)
+{
+	struct termios oldt, newt;
+	int ch;
+	int oldf;
+	tcgetattr(STDIN_FILENO, &oldt);
+	newt = oldt;
+	newt.c_lflag &= ~(ICANON | ECHO);
+	newt.c_cc[VMIN] = 1;
+	newt.c_cc[VTIME] = 0;
+	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+	oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+	fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+	ch = getchar();
+	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+	fcntl(STDIN_FILENO, F_SETFL, oldf);
+	if (ch != EOF)
+	{
+		ungetc(ch, stdin);
+		return 1;
+	}
+	return 0;
+}
+
+void clear_screen()
+{
+	printf("\033[H\033[J");
+}
+
+// Function to draw the game board
+void draw_board(int caret_pos, int ball_x, int ball_y)
+{
+	clear_screen();
+
+	for (int y = 0; y < HEIGHT; y++)
+	{
+		for (int x = 0; x < WIDTH; x++)
+		{
+			// Draw the wider caret, which is two characters wide ("##")
+			if (y == HEIGHT - 1 && (x == caret_pos || x == caret_pos + 1))
+			{
+				printf("##");
+				x++; // Skip the next cell because the caret is two characters wide
+			}
+			// Draw the ball
+			else if (y == ball_y && x == ball_x)
+			{
+				printf("O");
+			}
+			else
+			{
+				printf(".");
+			}
+		}
+		printf("\n");
+	}
+}
+
+// Main game loop
+int run_game()
+{
+	int caret_pos = WIDTH / 2;
+	int ball_x = rand() % WIDTH;
+	int ball_y = 0;
+	int ball_speed = 1;		// Ball moves one step at a time
+	int ball_direction = 1; // 1 means moving down, -1 means moving up
+	int game_over = 0;
+	int score = 0;
+	int ball_movement_counter = 0; // Counter to slow down the ball
+
+	while (!game_over)
+	{
+		// draw_board(caret_pos, ball_x, ball_y);
+
+		// Ball movement (only move once every few frames)
+		if (ball_movement_counter >= 5) // Control how often the ball moves
+		{
+			if (ball_direction == 1)
+			{
+				ball_y += ball_speed;
+			}
+			else
+			{
+				ball_y -= ball_speed;
+			}
+
+			// Ball bounce logic
+			if (ball_y >= HEIGHT - 1)
+			{
+				// Ball hits the ground
+				if (ball_x >= caret_pos && ball_x < caret_pos + 2)
+				{
+					ball_y = 0;
+					ball_x = rand() % WIDTH;
+					ball_direction = -1;
+					score++;
+				}
+				else
+				{
+					game_over = 1; // Ball missed, game over
+				}
+			}
+			else if (ball_y <= 0)
+			{
+				ball_direction = 1; // Ball hits the top and starts moving down
+			}
+
+			// Reset the counter for ball movement
+			ball_movement_counter = 0;
+		}
+		else
+		{
+			ball_movement_counter++; // Increase the counter if the ball hasn't moved yet
+		}
+
+		// Check for user input to move caret
+		// if (kbhit())
+		// {
+		// 	char ch = getchar();
+		// 	if (ch == 'a' && caret_pos > 0)
+		// 	{
+		// 		caret_pos--;
+		// 	}
+		// 	else if (ch == 'd' && caret_pos < WIDTH - 2) // caret is two characters wide
+		// 	{
+		// 		caret_pos++;
+		// 	}
+		// }
+
+		int move = rand() % 3;
+		if (move == 0 && caret_pos > 0)
+		{
+			caret_pos--;
+		}
+		else if (move == 2 && caret_pos < WIDTH - 2) // caret is two characters wide
+		{
+			caret_pos++;
+		}
+
+		// usleep(100000); // Slow down the game loop, so the caret can be moved multiple times
+	}
+
+	// clear_screen();
+	// printf("Game Over! You missed the ball. Score: %d\n", score);
+
+	return score;
+}
+
+char *itoa(int num)
+{
+	static char buffer[20];
+	snprintf(buffer, sizeof(buffer), "%d", num);
+	return buffer;
+}
+
+int save_fully(Population population, char *name)
+{
+	struct stat st = {0};
+	if (stat(name, &st) == -1)
+	{
+
+		if (mkdir(name, 0700))
+		{
+			perror("Error creating directory");
+			return 1;
+		}
+	}
+
+	char *filename = malloc(strlen(name) + strlen("/v0.0.1") + 1);
+	if (!filename)
+	{
+		perror("Memory allocation failed");
+		return 1;
+	}
+
+	snprintf(filename, strlen(name) + strlen("/v0.0.1") + 1, "%s/v0.0.1", name);
+
+	if (stat(filename, &st) == -1)
+	{
+		if (mkdir(filename, 0700))
+		{
+			perror("Error creating directory");
+			return 1;
+		}
+	}
+
+	// save mutation range
+	char *mutation_range_filename = malloc(strlen(filename) + strlen("/mutation_range") + 1);
+	if (!mutation_range_filename)
+	{
+		perror("Memory allocation failed");
+		return 1;
+	}
+	strcpy(mutation_range_filename, filename);
+	strcat(mutation_range_filename, "/mutation_range.txt");
+
+	FILE *mutation_range_file = fopen(mutation_range_filename, "w");
+	fprintf(mutation_range_file, "%d\n", mutations_count);
+	for (int i = 0; i < mutations_count + 1; i++)
+	{
+		fprintf(mutation_range_file, "%u ", mutations_range[i]);
+	}
+	fclose(mutation_range_file);
+	free(mutation_range_filename);
+
+	// save the population
+	char *population_filename = malloc(strlen(filename) + strlen("/population") + 1);
+	if (!population_filename)
+	{
+		perror("Memory allocation failed");
+		return 1;
+	}
+	strcpy(population_filename, filename);
+	strcat(population_filename, "/population.txt");
+
+	FILE *population_file = fopen(population_filename, "w");
+	fprintf(population_file, "%d\n", population.genomesCount);
+	fclose(population_file);
+	free(population_filename);
+	for (int i = 0; i < population.genomesCount; i++)
+	{
+		char *genomes_filename = malloc(strlen(filename) + 100);
+		if (!genomes_filename)
+		{
+			perror("Memory allocation failed");
+			return 1;
+		}
+		strcpy(genomes_filename, filename);
+		strcat(genomes_filename, "/genome-");
+		strcat(genomes_filename, itoa(i));
+		strcat(genomes_filename, ".txt");
+		save_genome(&population.genomes[i], genomes_filename);
+		free(genomes_filename);
+	}
+
+	return 0;
+}
+
+Population load_fully(char *name)
+{
+
+	struct stat st = {0};
+	if (stat(name, &st) == -1)
+	{
+		perror("Directory does not exist");
+		exit(1);
+	}
+
+	char *filename = malloc(strlen(name) + strlen("/v0.0.1") + 1);
+	if (!filename)
+	{
+		perror("Memory allocation failed");
+		exit(1);
+	}
+	snprintf(filename, strlen(name) + strlen("/v0.0.1") + 1, "%s/v0.0.1", name);
+	if (stat(filename, &st) == -1)
+	{
+		perror("Version directory does not exist");
+		free(filename);
+		exit(1);
+	}
+
+	// load mutation range
+	char *mutation_range_filename = malloc(strlen(filename) + strlen("/mutation_range.txt") + 1);
+	if (!mutation_range_filename)
+	{
+		perror("Memory allocation failed");
+		free(filename);
+		exit(1);
+	}
+	strcpy(mutation_range_filename, filename);
+	strcat(mutation_range_filename, "/mutation_range.txt");
+
+	FILE *mutation_range_file = fopen(mutation_range_filename, "r");
+	if (!mutation_range_file)
+	{
+		perror("Error opening mutation range file");
+		free(mutation_range_filename);
+		free(filename);
+		exit(1);
+	}
+
+	int mutations_count;
+	fscanf(mutation_range_file, "%d\n", &mutations_count);
+
+	unsigned int *mutations_range = malloc((mutations_count + 1) * sizeof(unsigned int));
+	for (int i = 0; i < mutations_count + 1; i++)
+	{
+		fscanf(mutation_range_file, "%u", &mutations_range[i]);
+	}
+	fclose(mutation_range_file);
+	free(mutation_range_filename);
+
+	// Load population data
+	Population population;
+
+	char *population_filename = malloc(strlen(filename) + strlen("/population.txt") + 1);
+	if (!population_filename)
+	{
+		perror("Memory allocation failed");
+		free(filename);
+		free(mutations_range);
+		exit(1);
+	}
+	strcpy(population_filename, filename);
+	strcat(population_filename, "/population.txt");
+
+	FILE *population_file = fopen(population_filename, "r");
+	if (!population_file)
+	{
+		perror("Error opening population file");
+		free(population_filename);
+		free(filename);
+		free(mutations_range);
+		exit(1);
+	}
+
+	fscanf(population_file, "%d", &population.genomesCount);
+	fclose(population_file);
+	free(population_filename);
+
+	// Load genomes
+	population.genomes = malloc(population.genomesCount * sizeof(Genome));
+
+	for (int i = 0; i < population.genomesCount; i++)
+	{
+		char *genomes_filename = malloc(strlen(filename) + 100);
+		if (!genomes_filename)
+		{
+			perror("Memory allocation failed");
+			free(filename);
+			free(mutations_range);
+			exit(1);
+		}
+		strcpy(genomes_filename, filename);
+		strcat(genomes_filename, "/genome-");
+
+		char str[20];
+		sprintf(str, "%d", i);
+		strcat(genomes_filename, str);
+		strcat(genomes_filename, ".txt");
+
+		// Load the genome from the file
+		population.genomes[i] = load_genome(genomes_filename);
+		free(genomes_filename);
+	}
+
+	free(filename);
+	free(mutations_range);
+
+	return population;
+}
+
 int main()
 {
 	srand(time(NULL));
 	init_mutation_range();
 
-	Population population = createPopulation(2, 2, 1, true, true);
-	float xor_inputs[4][2] = {
-		{0, 0},
-		{0, 1},
-		{1, 0},
-		{1, 1}};
-	float xor_outputs[4][1] = {{0}, {1}, {1}, {0}};
+	Population population = load_fully("test");
 
-	for (int i = 0; i < 10000; i++)
-	{
-		test_population_fitness(&population, xor_inputs[0], xor_outputs[0], 4, 4);
-		test_population_fitness(&population, xor_inputs[1], xor_outputs[1], 4, 4);
-		test_population_fitness(&population, xor_inputs[2], xor_outputs[2], 4, 4);
-		test_population_fitness(&population, xor_inputs[3], xor_outputs[3], 4, 4);
-		if (i % 1000 == 0)
-		{
-			printf("%f %d %d \n", population.genomes[0].fitness, population.genomes[0].edgeCount, population.genomes[0].nodeCount);
-		}
-		copy_best_and_mutate_genome(&population);
-	}
+	run_game();
 
-	free_population(&population);
-	free_mutation_range();
+	// Population population = createPopulation(3, 1, 3, true, true);
+	printf("Created population %f\n", population.genomes[0].edges[0].weight);
+	// if (save_fully(population, "test"))
+	// {
+	// 	printf("Error saving population\n");
+	// 	return 1;
+	// }
+
+	// for (int i = 0; i < 10000; i++)
+	// {
+	// 	test_population_fitness(&population, xor_inputs[0], xor_outputs[0], 4, 4);
+	// 	test_population_fitness(&population, xor_inputs[1], xor_outputs[1], 4, 4);
+	// 	test_population_fitness(&population, xor_inputs[2], xor_outputs[2], 4, 4);
+	// 	test_population_fitness(&population, xor_inputs[3], xor_outputs[3], 4, 4);
+	// 	if (i % 1000 == 0)
+	// 	{
+	// 		printf("%f %d %d \n", population.genomes[0].fitness, population.genomes[0].edgeCount, population.genomes[0].nodeCount);
+	// 	}
+	// 	copy_best_and_mutate_genome(&population);
+	// }
+
+	// free_population(&population);
+	// free_mutation_range();
 
 	return 0;
 }
