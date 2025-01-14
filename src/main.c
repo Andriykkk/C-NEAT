@@ -17,18 +17,19 @@
 #include <fcntl.h>
 
 // TODO: make bigram
+// TODO: clean nodes, but do this accordint to type, if it memory dont clean esle clean
 // TODO: after deleting remake innovation as right now it calculated from amount of nodes and edges
 // TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
 // TODO: add function that divide genomes(find genomic distance) into species and save them into struct
-// TODO: add function to crossover genomes
+// TODO: add function to crossover genomes https://www.youtube.com/watch?v=yVtdp1kF0I4&list=PL9WkKCom5t9_2VBiwERbNECPNJNPn2wkk&index=53
 // TODO: add proper innovation number as it allow us to compare networks
 // TODO: add more mutations
 // 		edge: disable, enable, /delete/,
 // 		node:  /delete/,
 // 		crossover: nodes, edges
-// TODO: add functions to save Population and load it
 // TODO: add adjactable input size, mutation ranges, several mutations per generation, how many times loop work in one generation
 // TODO: add backpropagation for each generation like in rnn
+// TODO: make so that nodes divided on layers, so i could perform batch normalisation on those layers
 // TODO: add proper function to find inactive edges, not randomly look aroung for inactive or save inactive
 // TODO: add function that divide genomes into species
 // TODO: add backpropagation
@@ -121,22 +122,6 @@ void feed_forward(Genome *genome, float *inputs)
 	free(queue);
 }
 
-void empty_outputs(Genome *genome)
-{
-	for (int i = 0; i < genome->outputsCount; i++)
-	{
-		genome->nodes[genome->outputs[i]].output = 0;
-	}
-}
-
-void empty_inputs(Genome *genome)
-{
-	for (int i = 0; i < genome->inputsCount; i++)
-	{
-		genome->nodes[genome->inputs[i]].output = 0;
-	}
-}
-
 void test_genome_fitness(Genome *genome, float *inputs, float *expected_outputs, int inputsCount, int batchSize)
 {
 	int count = genome->outputsCount * inputsCount;
@@ -223,189 +208,6 @@ void free_population(Population *population)
 	// free(population);
 }
 
-#define WIDTH 20
-#define HEIGHT 10
-
-int kbhit(void)
-{
-	struct termios oldt, newt;
-	int ch;
-	int oldf;
-	tcgetattr(STDIN_FILENO, &oldt);
-	newt = oldt;
-	newt.c_lflag &= ~(ICANON | ECHO);
-	newt.c_cc[VMIN] = 1;
-	newt.c_cc[VTIME] = 0;
-	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-	oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-	fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-	ch = getchar();
-	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-	fcntl(STDIN_FILENO, F_SETFL, oldf);
-	if (ch != EOF)
-	{
-		ungetc(ch, stdin);
-		return 1;
-	}
-	return 0;
-}
-
-void clear_screen()
-{
-	printf("\033[H\033[J");
-}
-
-// Function to draw the game board
-void draw_board(int caret_pos, int ball_x, int ball_y)
-{
-	clear_screen();
-
-	for (int y = 0; y < HEIGHT; y++)
-	{
-		for (int x = 0; x < WIDTH; x++)
-		{
-			// Draw the wider caret, which is two characters wide ("##")
-			if (y == HEIGHT - 1 && (x == caret_pos || x == caret_pos + 1))
-			{
-				printf("##");
-				x++; // Skip the next cell because the caret is two characters wide
-			}
-			// Draw the ball
-			else if (y == ball_y && x == ball_x)
-			{
-				printf("O");
-			}
-			else
-			{
-				printf(".");
-			}
-		}
-		printf("\n");
-	}
-}
-
-// Main game loop
-int run_game(Genome *genome)
-{
-	int caret_pos = WIDTH / 2;
-	int ball_x = rand() % WIDTH;
-	int ball_y = 0;
-	int ball_speed = 1;		// Ball moves one step at a time
-	int ball_direction = 1; // 1 means moving down, -1 means moving up
-	int game_over = 0;
-	int score = 0;
-	int ball_movement_counter = 0; // Counter to slow down the ball
-
-	while (!game_over)
-	{
-		// draw_board(caret_pos, ball_x, ball_y);
-
-		// Ball movement (only move once every few frames)
-		if (ball_movement_counter >= 5) // Control how often the ball moves
-		{
-			if (ball_direction == 1)
-			{
-				ball_y += ball_speed;
-			}
-			else
-			{
-				ball_y -= ball_speed;
-			}
-
-			// Ball bounce logic
-			if (ball_y >= HEIGHT - 1)
-			{
-				// Ball hits the ground
-				if (ball_x >= caret_pos && ball_x < caret_pos + 2)
-				{
-					ball_y = 0;
-					ball_x = rand() % WIDTH;
-					ball_direction = -1;
-					score++;
-				}
-				else
-				{
-					game_over = 1; // Ball missed, game over
-				}
-			}
-			else if (ball_y <= 0)
-			{
-				ball_direction = 1; // Ball hits the top and starts moving down
-			}
-
-			// Reset the counter for ball movement
-			ball_movement_counter = 0;
-		}
-		else
-		{
-			ball_movement_counter++; // Increase the counter if the ball hasn't moved yet
-		}
-
-		// Check for user input to move caret
-		// if (kbhit())
-		// {
-		// 	char ch = getchar();
-		// 	if (ch == 'a' && caret_pos > 0)
-		// 	{
-		// 		caret_pos--;
-		// 	}
-		// 	else if (ch == 'd' && caret_pos < WIDTH - 2) // caret is two characters wide
-		// 	{
-		// 		caret_pos++;
-		// 	}
-		// }
-
-		float *ball_position = malloc(sizeof(float));
-		if (ball_x < caret_pos)
-		{
-			ball_position[0] = -1;
-		}
-		else if (ball_x > caret_pos + 1)
-		{
-			ball_position[0] = 1;
-		}
-		else
-		{
-			ball_position[0] = 0;
-		}
-
-		feed_forward(genome, ball_position);
-
-		int move = 0;
-		int max_move = 0;
-		for (int i = 0; i < 3; i++)
-		{
-			if (genome->outputs[i] > max_move)
-			{
-				max_move = i;
-			}
-		}
-		if (max_move == 0)
-			move = 0;
-		else if (max_move == 1)
-			move = 1;
-		else if (max_move == 2)
-			move = 2;
-
-		if (move == 0 && caret_pos > 0)
-		{
-			caret_pos--;
-		}
-		else if (move == 2 && caret_pos < WIDTH - 2) // caret is two characters wide
-		{
-			caret_pos++;
-		}
-		empty_outputs(genome);
-
-		// usleep(100000); // Slow down the game loop, so the caret can be moved multiple times
-	}
-
-	// clear_screen();
-	// printf("Game Over! You missed the ball. Score: %d\n", score);
-
-	return score;
-}
-
 int main()
 {
 	srand(time(NULL));
@@ -416,25 +218,7 @@ int main()
 
 	for (int i = 0; i < 500; i++)
 	{
-		for (int j = 0; j < population.genomesCount; j++)
-		{
-			int score = run_game(&population.genomes[0]);
-			if (score > max_score)
-			{
-				max_score = score;
-				printf("New max score: %d\n", max_score);
-			}
 
-			if (score != 0)
-				population.genomes[j].fitness = 1.0 / (float)score;
-			else
-				population.genomes[j].fitness = 1.0;
-		}
-
-		if (i % 100 == 0)
-		{
-			printf("%f %d %d \n", population.genomes[0].fitness, population.genomes[0].edgeCount, population.genomes[0].nodeCount);
-		}
 		copy_best_and_mutate_genome(&population);
 	}
 

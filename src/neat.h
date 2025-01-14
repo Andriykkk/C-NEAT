@@ -16,5 +16,8 @@ void fill_nodes_edges(Genome *genome);
 void init_mutation_range();
 void free_mutation_range();
 void call_random_mutation(Genome *genome);
+void empty_outputs(Genome *genome);
+void empty_nodes(Genome *genome);
+void empty_inputs(Genome *genome);
 
 #endif

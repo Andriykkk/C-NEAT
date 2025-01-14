@@ -3,9 +3,8 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-#define NODES_LIMIT 1000
+#define NODES_LIMIT 100
 #define EDGES_LIMIT 10000
-#define NODE_EDGE_LIMIT 100
 #define QUEUE_SIZE 10000
 
 typedef enum

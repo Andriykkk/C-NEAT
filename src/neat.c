@@ -164,6 +164,30 @@ void fill_nodes_edges(Genome *genome)
     }
 }
 
+void empty_outputs(Genome *genome)
+{
+    for (int i = 0; i < genome->outputsCount; i++)
+    {
+        genome->nodes[genome->outputs[i]].output = 0;
+    }
+}
+
+void empty_nodes(Genome *genome)
+{
+    for (int i = 0; i < genome->nodeCount; i++)
+    {
+        genome->nodes[i].output = 0;
+    }
+}
+
+void empty_inputs(Genome *genome)
+{
+    for (int i = 0; i < genome->inputsCount; i++)
+    {
+        genome->nodes[genome->inputs[i]].output = 0;
+    }
+}
+
 unsigned int *mutations_range;
 unsigned int mutations_count = 9;
 
