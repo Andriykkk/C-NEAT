@@ -18,8 +18,6 @@
 #include <fcntl.h>
 
 // TODO: make bigram
-// TODO: clean nodes, but do this accordint to type, if it memory dont clean esle clean
-// TODO: after deleting remake innovation as right now it calculated from amount of nodes and edges
 // TODO: add combining genomes
 // TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
 // TODO: add nodes biases to difference between species
@@ -292,7 +290,7 @@ int main()
 		clean_population_nodes_outputs(&population);
 		test_population_fitness(&population, xor_inputs[3], xor_outputs[3], 4, 4);
 		clean_population_nodes_outputs(&population);
-		if (i % 100 == 0)
+		if (i % 10 == 0)
 		{
 			int best_genome = 0;
 			for (int j = 0; j < population.genomesCount; j++)

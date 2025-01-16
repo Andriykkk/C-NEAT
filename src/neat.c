@@ -363,21 +363,21 @@ void call_random_mutation(Population *population, int genome_index)
     }
 
     // add node mutations and disable original edge
-    // else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
-    // {
-    //     add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 0);
-    //     population->edge_innovation += 2;
-    // }
-    // else if (random_index >= mutations_range[2] && random_index < mutations_range[3])
-    // {
-    //     add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 0, 1);
-    //     population->edge_innovation += 2;
-    // }
-    // else if (random_index >= mutations_range[3] && random_index < mutations_range[4])
-    // {
-    //     add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 1);
-    //     population->edge_innovation += 2;
-    // }
+    else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
+    {
+        add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 0);
+        population->edge_innovation += 2;
+    }
+    else if (random_index >= mutations_range[2] && random_index < mutations_range[3])
+    {
+        add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 0, 1);
+        population->edge_innovation += 2;
+    }
+    else if (random_index >= mutations_range[3] && random_index < mutations_range[4])
+    {
+        add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 1);
+        population->edge_innovation += 2;
+    }
 
     // add node mutations and dont disable original edge
     else if (random_index >= mutations_range[4] && random_index <= mutations_range[5])
