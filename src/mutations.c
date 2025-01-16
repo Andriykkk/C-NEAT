@@ -26,7 +26,7 @@ int *find_disabled_edges(Genome *genome)
     return disabled_edges;
 }
 
-void add_edge_mutation(Genome *genome)
+void add_edge_mutation(Genome *genome, int innovation)
 {
     if (genome->edgeCount >= EDGES_LIMIT)
         return;
@@ -60,11 +60,11 @@ void add_edge_mutation(Genome *genome)
     if (valid)
     {
         float weight = (float)(rand() / RAND_MAX) * 2 - 1;
-        genome->edges[genome->edgeCount++] = createEdge(from_node, to_node, weight, true, genome->edgeCount - 1);
+        genome->edges[genome->edgeCount++] = createEdge(from_node, to_node, weight, true, innovation);
     }
 }
 
-void add_node_mutation(Genome *genome, short disable_node, short only_active, short only_inactive)
+void add_node_mutation(Genome *genome, int edge_innovation, int node_innovation, short disable_node, short only_active, short only_inactive)
 {
     if (genome->nodeCount >= NODES_LIMIT)
         return;
@@ -107,11 +107,11 @@ add_node:
         genome->edges[edge_index].enabled = false;
     }
 
-    Node new_node = createNode(genome->nodeCount, get_random_numberf(-1, 1), LINEAR, HIDDEN);
+    Node new_node = createNode(node_innovation, get_random_numberf(-1, 1), LINEAR, HIDDEN);
     genome->nodes[genome->nodeCount++] = new_node;
 
-    genome->edges[genome->edgeCount++] = createEdge(genome->edges[edge_index].from, new_node.id, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
-    genome->edges[genome->edgeCount++] = createEdge(new_node.id, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, genome->edgeCount - 1);
+    genome->edges[genome->edgeCount++] = createEdge(genome->edges[edge_index].from, genome->nodeCount - 1, get_random_numberf(-1, 1), true, edge_innovation++);
+    genome->edges[genome->edgeCount++] = createEdge(genome->nodeCount - 1, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, edge_innovation);
 }
 
 void delete_edge_mutation(Genome *genome)

@@ -7,6 +7,10 @@
 #define EDGES_LIMIT 10000
 #define QUEUE_SIZE 10000
 
+#define DELETING_GENOME_THRESHOLD 0.5
+#define SIMILAR_SPECIES_THRESHOLD 0.5
+#define MUTATION_THRESHOLD 0.8
+
 typedef enum
 {
     LINEAR,
@@ -23,11 +27,11 @@ typedef enum
 
 typedef struct
 {
+    int id;
     int from;
     int to;
     float weight;
     bool enabled;
-    int innovation;
 } Edge;
 
 typedef struct
@@ -58,7 +62,10 @@ typedef struct
 typedef struct
 {
     Genome *genomes;
+    int *species;
     int genomesCount;
+    int edge_innovation;
+    int node_innovation;
 } Population;
 
 typedef struct
