@@ -216,9 +216,11 @@ void delete_worst_in_species(Population *population, float threshold)
 		}
 
 		t = fmax(0.0f, fmin(1.0f, t));
+		// printf("fitness: %f threshold: %f\n", g_fitness, t);
 
 		if (get_random_numberf(0.0, 1.0) < t)
 		{
+			// printf("copy fitness: %f threshold: %f\n", g_fitness, t);
 			population->genomes[i].fitness = -1;
 		}
 	}
@@ -259,34 +261,59 @@ void clean_genomes_fitness(Population *population)
 	}
 }
 
+void clean_population_nodes_outputs(Population *population)
+{
+	for (int i = 0; i < population->genomesCount; i++)
+	{
+		clean_nodes_outputs(&population->genomes[i]);
+	}
+}
+
 int main()
 {
 	srand(time(NULL));
 	init_mutation_range();
 
-	Population population = createPopulation(20, 2, 1, true, true);
+	Population population = createPopulation(2000, 2, 1, true, true);
 	float xor_inputs[4][2] = {
 		{0, 0},
 		{0, 1},
 		{1, 0},
 		{1, 1}};
 	float xor_outputs[4][1] = {{0}, {1}, {1}, {0}};
-
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < 1000; i++)
 	{
+
 		test_population_fitness(&population, xor_inputs[0], xor_outputs[0], 4, 4);
+		clean_population_nodes_outputs(&population);
 		test_population_fitness(&population, xor_inputs[1], xor_outputs[1], 4, 4);
+		clean_population_nodes_outputs(&population);
 		test_population_fitness(&population, xor_inputs[2], xor_outputs[2], 4, 4);
+		clean_population_nodes_outputs(&population);
 		test_population_fitness(&population, xor_inputs[3], xor_outputs[3], 4, 4);
-		if (i % 1 == 0)
+		clean_population_nodes_outputs(&population);
+		if (i % 100 == 0)
 		{
-			printf("%f %d %d \n", population.genomes[0].fitness, population.genomes[0].edgeCount, population.genomes[0].nodeCount);
+			int best_genome = 0;
+			for (int j = 0; j < population.genomesCount; j++)
+			{
+				if (population.genomes[j].fitness < population.genomes[best_genome].fitness)
+				{
+					best_genome = j;
+				}
+			}
+			printf("%f %d %d \n", population.genomes[best_genome].fitness, population.genomes[best_genome].edgeCount, population.genomes[best_genome].nodeCount);
 		}
 
 		delete_worst_in_species(&population, DELETING_GENOME_THRESHOLD);
 		fill_deleted_genomes(&population);
 		clean_genomes_fitness(&population);
 		randomly_mutate_population(&population, MUTATION_THRESHOLD);
+
+		for (int j = 0; j < population.genomesCount; j++)
+		{
+			fill_nodes_edges(&population.genomes[j]);
+		}
 	}
 
 	// Population population = load_fully("test");
@@ -296,8 +323,8 @@ int main()
 	// 	return 1;
 	// }
 
-	// free_population(&population);
-	// free_mutation_range();
+	free_population(&population);
+	free_mutation_range();
 
 	return 0;
 }

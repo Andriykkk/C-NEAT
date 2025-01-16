@@ -45,6 +45,11 @@ Genome createGenome(int inputs, int outputs, bool randomBias, bool randomWeights
 
     genome.nodes = malloc(sizeof(Node) * NODES_LIMIT);
     genome.edges = malloc(sizeof(Edge) * EDGES_LIMIT);
+    if (genome.nodes == NULL || genome.edges == NULL || genome.inputs == NULL || genome.outputs == NULL)
+    {
+        printf("Error allocating memory\n");
+        exit(1);
+    }
 
     for (int i = 0; i < inputs; i++)
     {
@@ -191,7 +196,6 @@ void feed_forward(Genome *genome, float *inputs)
 
             node_activation(*current_node);
             genome->nodes[edge.to].output += current_node->output * edge.weight;
-
             queue[end_q++] = edge.to;
         }
     }
@@ -208,6 +212,17 @@ void feed_forward(Genome *genome, float *inputs)
     // }
 
     free(queue);
+}
+
+void clean_nodes_outputs(Genome *genome)
+{
+    for (int i = 0; i < genome->nodeCount; i++)
+    {
+        if (genome->nodes[i].type != REMEMBER)
+        {
+            genome->nodes[i].output = 0;
+        }
+    }
 }
 
 float calculate_genetic_distance(Genome *genome_a, Genome *genome_b)
@@ -348,23 +363,23 @@ void call_random_mutation(Population *population, int genome_index)
     }
 
     // add node mutations and disable original edge
-    else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
-    {
-        add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 0);
-        population->edge_innovation += 2;
-    }
-    else if (random_index >= mutations_range[2] && random_index < mutations_range[3])
-    {
-        add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 0, 1);
-        population->edge_innovation += 2;
-    }
-    else if (random_index >= mutations_range[3] && random_index < mutations_range[4])
-    {
-        add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 1);
-        population->edge_innovation += 2;
-    }
+    // else if (random_index >= mutations_range[1] && random_index < mutations_range[2])
+    // {
+    //     add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 0);
+    //     population->edge_innovation += 2;
+    // }
+    // else if (random_index >= mutations_range[2] && random_index < mutations_range[3])
+    // {
+    //     add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 0, 1);
+    //     population->edge_innovation += 2;
+    // }
+    // else if (random_index >= mutations_range[3] && random_index < mutations_range[4])
+    // {
+    //     add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 0, 1, 1);
+    //     population->edge_innovation += 2;
+    // }
 
-    // // add node mutations and dont disable original edge
+    // add node mutations and dont disable original edge
     else if (random_index >= mutations_range[4] && random_index <= mutations_range[5])
     {
         add_node_mutation(&population->genomes[genome_index], population->edge_innovation, population->node_innovation++, 1, 1, 0);

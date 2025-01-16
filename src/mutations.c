@@ -6,24 +6,23 @@
 #include "mutations.h"
 #include "utils.h"
 
-int *find_disabled_edges(Genome *genome)
+int find_disabled_edges(Genome *genome, int *disabled_edges)
 {
-    int *disabled_edges = malloc(genome->edgeCount / 100);
     int index = 0;
+    int found = 0;
 
     for (int i = 0; i < genome->edgeCount; i++)
     {
-        if (!genome->edges[i].enabled)
-        {
-            disabled_edges[index++] = i;
-        }
         if (i >= genome->edgeCount / 100)
         {
             break;
         }
+        if (!genome->edges[i].enabled)
+        {
+            disabled_edges[index++] = i;
+            found++;
+        }
     }
-
-    return disabled_edges;
 }
 
 void add_edge_mutation(Genome *genome, int innovation)
@@ -86,22 +85,28 @@ void add_node_mutation(Genome *genome, int edge_innovation, int node_innovation,
             attempts--;
         }
     }
+
     if (only_inactive)
     {
-        int *disabled_edges = find_disabled_edges(genome);
-        int disabled_edges_count = genome->edgeCount / 100;
-        if (disabled_edges_count == 0)
-            return;
-        edge_index = disabled_edges[get_random_unsigned_int() % disabled_edges_count];
-    }
+        int count = genome->edgeCount / 100 == 0 ? 1 : genome->edgeCount / 100;
+        int *disabled_edges = malloc(count * sizeof(int));
+        int found = find_disabled_edges(genome, disabled_edges);
 
+        if (found == 0)
+        {
+            free(disabled_edges);
+            return;
+        }
+
+        edge_index = disabled_edges[get_random_unsigned_int() % found];
+        free(disabled_edges);
+    }
     if (attempts == 0)
     {
         return;
     }
 
 add_node:
-
     if (disable_node)
     {
         genome->edges[edge_index].enabled = false;

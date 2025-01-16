@@ -22,7 +22,8 @@ typedef enum
 {
     INPUT,
     OUTPUT,
-    HIDDEN
+    HIDDEN,
+    REMEMBER
 } NodeType;
 
 typedef struct

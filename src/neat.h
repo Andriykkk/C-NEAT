@@ -13,6 +13,7 @@ Genome copyGenome(Genome *original);
 Population createPopulation(int genomesCount, int inputs, int outputs, bool randomBias, bool randomWeights);
 void free_population(Population *population);
 void feed_forward(Genome *genome, float *inputs);
+void clean_nodes_outputs(Genome *genome);
 float calculate_genetic_distance(Genome *genome_a, Genome *genome_b);
 void free_genome(Genome *g);
 void fill_nodes_edges(Genome *genome);
