@@ -18,12 +18,11 @@
 
 #include <fcntl.h>
 
-// TODO: make bigram (create tokenizer with hashmap, create learning data, create embedding table, run bigram over it)
 // TODO: add combining genomes
 // TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
 // TODO: add nodes biases to difference between species
+// TODO: watct at saved websites to make better neat
 // TODO: add function to crossover genomes https://www.youtube.com/watch?v=yVtdp1kF0I4&list=PL9WkKCom5t9_2VBiwERbNECPNJNPn2wkk&index=53
-// TODO: add proper innovation number as it allow us to compare networks
 // TODO: add more mutations
 // 		edge: disable, enable, /delete/,
 // 		node:  /delete/,

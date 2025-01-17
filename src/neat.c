@@ -179,12 +179,6 @@ void feed_forward(Genome *genome, float *inputs)
         queue[end_q++] = input_id;
     }
 
-    // work until all outputs are full
-    // while (emptyOutputCount > 0)
-    // {
-    // 	emptyOutputCount = genome->outputsCount;
-
-    // forward pass
     for (int i = 0; i < genome->nodeCount; i++)
     {
         Node *current_node = &genome->nodes[queue[start_q++]];
@@ -199,17 +193,6 @@ void feed_forward(Genome *genome, float *inputs)
             queue[end_q++] = edge.to;
         }
     }
-
-    // check output
-    // 	for (int i = 0; i < genome->outputsCount; i++)
-    // 	{
-    // 		int output_id = genome->outputs[i];
-    // 		if (genome->nodes[output_id].output != 0)
-    // 		{
-    // 			emptyOutputCount--;
-    // 		}
-    // 	}
-    // }
 
     free(queue);
 }
