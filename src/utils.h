@@ -2,6 +2,8 @@
 
 Genome load_genome(char *filename);
 void save_genome(Genome *g, char *filename);
+void clean_genomes_fitness(Population *population);
+void clean_population_nodes_outputs(Population *population);
 Population load_fully(char *name);
 int save_fully(Population population, char *name);
 void print_genome(Genome genome);

@@ -7,6 +7,22 @@
 #include <string.h>
 #include "neat.h"
 
+void clean_genomes_fitness(Population *population)
+{
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        population->genomes[i].fitness = 0;
+    }
+}
+
+void clean_population_nodes_outputs(Population *population)
+{
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        clean_nodes_outputs(&population->genomes[i]);
+    }
+}
+
 Genome load_genome(char *filename)
 {
     FILE *file = fopen(filename, "r");

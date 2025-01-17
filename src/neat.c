@@ -214,6 +214,137 @@ void feed_forward(Genome *genome, float *inputs)
     free(queue);
 }
 
+int assign_to_species(Population *population, float threshold)
+{
+    int *species = population->species;
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        species[i] = -1;
+    }
+
+    int species_count = 0;
+
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        char assigned = false;
+        for (int j = 0; j < species_count; j++)
+        {
+            if (species[j] != -1 && calculate_genetic_distance(&population->genomes[i], &population->genomes[species[j]]) < threshold)
+            {
+                species[i] = species[j];
+                assigned = true;
+                break;
+            }
+        }
+
+        if (!assigned)
+        {
+            species[i] = species_count++;
+        }
+    }
+
+    return species_count;
+}
+
+void delete_worst_in_species(Population *population, float threshold)
+{
+    int species_count = assign_to_species(population, SIMILAR_SPECIES_THRESHOLD);
+    float population_fitness = 0;
+    float *species_fitness = (float *)calloc(species_count, sizeof(float));
+    int *species_size = (int *)calloc(species_count, sizeof(int));
+
+    // average fitness for each species
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        species_fitness[population->species[i]] += population->genomes[i].fitness;
+        species_size[population->species[i]]++;
+    }
+    for (int i = 0; i < species_count; i++)
+    {
+        species_fitness[i] /= species_size[i];
+    }
+
+    // average fitness between species
+    for (int i = 0; i < species_count; i++)
+    {
+        population_fitness += species_fitness[i];
+    }
+    population_fitness /= species_count;
+
+    // randomly delete genomes
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        float t = threshold;
+        float s_fitness = species_fitness[population->species[i]];
+        float g_fitness = population->genomes[i].fitness;
+
+        if (s_fitness < population_fitness)
+        {
+            t /= fabsf(s_fitness - population_fitness);
+        }
+        else
+        {
+            t *= fabsf(s_fitness - population_fitness);
+        }
+
+        if (g_fitness < s_fitness)
+        {
+            t /= fabsf(s_fitness - g_fitness);
+        }
+        else
+        {
+            t *= fabsf(s_fitness - g_fitness);
+        }
+
+        t = fmax(0.0f, fmin(1.0f, t));
+        // printf("fitness: %f threshold: %f\n", g_fitness, t);
+
+        if (get_random_numberf(0.0, 1.0) < t)
+        {
+            // printf("copy fitness: %f threshold: %f\n", g_fitness, t);
+            population->genomes[i].fitness = -1;
+        }
+    }
+
+    free(species_fitness);
+    free(species_size);
+}
+
+void fill_deleted_genomes(Population *population)
+{
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        if (population->genomes[i].fitness == -1)
+        {
+            unsigned int attempt = 0;
+            unsigned int copy_id = i;
+            free_genome(&population->genomes[i]);
+
+            while (attempt < 100)
+            {
+                copy_id = get_random_unsigned_int() % population->genomesCount;
+                if (population->genomes[copy_id].fitness != -1)
+                    break;
+
+                attempt++;
+            }
+
+            population->genomes[i] = copyGenome(&population->genomes[copy_id]);
+        }
+    }
+}
+
+void randomly_mutate_population(Population *population, float mutate_threshold)
+{
+    for (int i = 0; i < population->genomesCount; i++)
+    {
+        if (get_random_numberf(0, 1) < mutate_threshold)
+        {
+            call_random_mutation(population, i);
+        }
+    }
+}
+
 void clean_nodes_outputs(Genome *genome)
 {
     for (int i = 0; i < genome->nodeCount; i++)

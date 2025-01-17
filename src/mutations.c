@@ -23,6 +23,7 @@ int find_disabled_edges(Genome *genome, int *disabled_edges)
             found++;
         }
     }
+    return found;
 }
 
 void add_edge_mutation(Genome *genome, int innovation)
@@ -79,11 +80,11 @@ void add_node_mutation(Genome *genome, int edge_innovation, int node_innovation,
     int attempts = 100;
     if (only_active)
     {
-        while (!genome->edges[edge_index].enabled && attempts > 0)
+        do
         {
             edge_index = get_random_unsigned_int() % genome->edgeCount;
             attempts--;
-        }
+        } while (!genome->edges[edge_index].enabled && attempts > 0);
     }
 
     if (only_inactive)
@@ -97,26 +98,26 @@ void add_node_mutation(Genome *genome, int edge_innovation, int node_innovation,
             free(disabled_edges);
             return;
         }
-
-        edge_index = disabled_edges[get_random_unsigned_int() % found];
+        edge_index = (unsigned int)disabled_edges[get_random_unsigned_int() % found];
         free(disabled_edges);
     }
+
     if (attempts == 0)
     {
         return;
     }
-
 add_node:
+
     if (disable_node)
     {
         genome->edges[edge_index].enabled = false;
     }
 
-    Node new_node = createNode(node_innovation, get_random_numberf(-1, 1), LINEAR, HIDDEN);
-    genome->nodes[genome->nodeCount++] = new_node;
+    //     Node new_node = createNode(node_innovation, get_random_numberf(-1, 1), LINEAR, HIDDEN);
+    //     genome->nodes[genome->nodeCount++] = new_node;
 
-    genome->edges[genome->edgeCount++] = createEdge(genome->edges[edge_index].from, genome->nodeCount - 1, get_random_numberf(-1, 1), true, edge_innovation++);
-    genome->edges[genome->edgeCount++] = createEdge(genome->nodeCount - 1, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, edge_innovation);
+    //     genome->edges[genome->edgeCount++] = createEdge(genome->edges[edge_index].from, genome->nodeCount - 1, get_random_numberf(-1, 1), true, edge_innovation++);
+    //     genome->edges[genome->edgeCount++] = createEdge(genome->nodeCount - 1, genome->edges[edge_index].to, get_random_numberf(-1, 1), true, edge_innovation);
 }
 
 void delete_edge_mutation(Genome *genome)
