@@ -405,7 +405,8 @@ float calculate_genetic_distance(Genome *genome_a, Genome *genome_b)
     int excess = 0;
     float weight_diff = 0;
     float bias_diff = 0;
-    int matching = 0;
+    int matching_nodes = 0;
+    int matching_edges = 0;
 
     // compare edges
     int max_edge_innovation = fmax(genome_a->edges[genome_a->edgeCount - 1].id, genome_b->edges[genome_b->edgeCount - 1].id);
@@ -426,7 +427,7 @@ float calculate_genetic_distance(Genome *genome_a, Genome *genome_b)
         }
         else if (genome_a->edges[i].id == genome_b->edges[j].id && genome_a->edges[i].enabled && genome_b->edges[j].enabled)
         {
-            matching++;
+            matching_edges++;
             weight_diff += fabs(genome_a->edges[i].weight - genome_b->edges[j].weight);
             i++;
             j++;
@@ -448,16 +449,61 @@ float calculate_genetic_distance(Genome *genome_a, Genome *genome_b)
         j++;
     }
 
+    // compare nodes
     int max_node_innovation = fmax(genome_a->nodes[genome_a->nodeCount - 1].id, genome_b->nodes[genome_b->nodeCount - 1].id);
+    int m = 0, n = 0;
+    while (m < genome_a->nodeCount && n < genome_b->nodeCount)
+    {
+        if (genome_a->nodes[m].id < genome_b->nodes[n].id)
+        {
+            disjoint++;
+            m++;
+            continue;
+        }
+        else if (genome_b->nodes[n].id < genome_a->nodes[m].id)
+        {
+            disjoint++;
+            n++;
+            continue;
+        }
+        else if (genome_a->nodes[m].id == genome_b->nodes[n].id)
+        {
+            matching_nodes++;
+            bias_diff += fabs(genome_a->nodes[m].bias - genome_b->nodes[n].bias);
+            if (genome_a->nodes[m].activationFunction != genome_b->nodes[n].activationFunction)
+            {
+                bias_diff += 1.0f;
+            }
+            m++;
+            n++;
+            continue;
+        }
+        m++;
+        n++;
+    }
+
+    while (m < genome_a->nodeCount)
+    {
+        excess++;
+        m++;
+    }
+
+    while (n < genome_b->nodeCount)
+    {
+        excess++;
+        n++;
+    }
 
     float normalized_distance = 0.0f;
-    if (matching > 0)
+    float node_normalizer = fmax(max_node_innovation, 1);
+    float edge_normalizer = fmax(max_edge_innovation, 1);
+    if (matching_nodes > 0 && matching_edges > 0)
     {
-        normalized_distance = (disjoint + 2 * excess + weight_diff / matching) / max_edge_innovation;
+        normalized_distance = (disjoint + 2 * excess + weight_diff / matching_edges + bias_diff / matching_nodes) / (node_normalizer + edge_normalizer);
     }
     else
     {
-        normalized_distance = disjoint + 2 * excess;
+        normalized_distance = (disjoint + 2 * excess + weight_diff + bias_diff) / (node_normalizer + edge_normalizer);
     }
 
     return normalized_distance;
