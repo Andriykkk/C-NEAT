@@ -9,7 +9,7 @@ extern unsigned int mutations_count;
 Node createNode(int id, float bias, ActivationFunction activationFunction, NodeType type);
 Edge createEdge(int from, int to, float weight, bool enabled, int innovation);
 Genome createGenome(int inputs, int outputs, bool randomBias, bool randomWeights);
-Genome copyGenome(Genome *original);
+Genome copy_genome(Genome *original);
 Population createPopulation(int genomesCount, int inputs, int outputs, bool randomBias, bool randomWeights);
 void free_population(Population *population);
 void feed_forward(Genome *genome, float *inputs);

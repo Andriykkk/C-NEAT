@@ -7,6 +7,11 @@
 #include <string.h>
 #include "neat.h"
 
+int max(int a, int b)
+{
+    return a > b ? a : b;
+}
+
 void clean_genomes_fitness(Population *population)
 {
     for (int i = 0; i < population->genomesCount; i++)

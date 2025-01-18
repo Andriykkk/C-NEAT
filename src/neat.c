@@ -79,7 +79,7 @@ Genome createGenome(int inputs, int outputs, bool randomBias, bool randomWeights
     return genome;
 }
 
-Genome copyGenome(Genome *original)
+Genome copy_genome(Genome *original)
 {
     Genome copy;
     copy.inputsCount = original->inputsCount;
@@ -293,26 +293,86 @@ void delete_worst_in_species(Population *population, float threshold)
     free(species_size);
 }
 
+Genome combine_genomes(Genome *genome1, Genome *genome2)
+{
+    Genome *best_genome;
+    Genome *worst_genome;
+
+    if (genome1->fitness > genome2->fitness)
+    {
+        best_genome = genome2;
+        worst_genome = genome1;
+    }
+    else
+    {
+        best_genome = genome1;
+        worst_genome = genome2;
+    }
+
+    Genome new_genome = copy_genome(best_genome);
+
+    // Randomly combine nodes
+    for (int i = 0; i < new_genome.nodeCount; i++)
+    {
+        if (i < genome1->nodeCount && i < genome2->nodeCount)
+        {
+            new_genome.nodes[i] = (get_random_unsigned_int() % 3 == 0) ? worst_genome->nodes[i] : best_genome->nodes[i];
+        }
+        else if (i < genome1->nodeCount)
+        {
+            new_genome.nodes[i] = genome1->nodes[i];
+        }
+        else
+        {
+            new_genome.nodes[i] = genome2->nodes[i];
+        }
+    }
+
+    // Randomly combine edges
+    for (int i = 0; i < new_genome.edgeCount; i++)
+    {
+        if (i < genome1->edgeCount && i < genome2->edgeCount)
+        {
+            new_genome.edges[i] = (get_random_unsigned_int() % 3 == 0) ? worst_genome->edges[i] : best_genome->edges[i];
+        }
+        else if (i < genome1->edgeCount)
+        {
+            new_genome.edges[i] = genome1->edges[i];
+        }
+        else
+        {
+            new_genome.edges[i] = genome2->edges[i];
+        }
+    }
+
+    return new_genome;
+}
+
 void fill_deleted_genomes(Population *population)
 {
     for (int i = 0; i < population->genomesCount; i++)
     {
         if (population->genomes[i].fitness == -1)
         {
+            unsigned int randomIndex1 = get_random_unsigned_int() % population->genomesCount;
+            unsigned int randomIndex2 = get_random_unsigned_int() % population->genomesCount;
             unsigned int attempt = 0;
-            unsigned int copy_id = i;
-            free_genome(&population->genomes[i]);
 
-            while (attempt < 100)
+            while (attempt < 100 && randomIndex1 == randomIndex2 && (population->genomes[randomIndex1].fitness == -1 || population->genomes[randomIndex2].fitness == -1))
             {
-                copy_id = get_random_unsigned_int() % population->genomesCount;
-                if (population->genomes[copy_id].fitness != -1)
-                    break;
+                randomIndex1 = get_random_unsigned_int() % population->genomesCount;
+                randomIndex2 = get_random_unsigned_int() % population->genomesCount;
 
                 attempt++;
             }
 
-            population->genomes[i] = copyGenome(&population->genomes[copy_id]);
+            Genome *genome1 = &population->genomes[randomIndex1];
+            Genome *genome2 = &population->genomes[randomIndex2];
+
+            unsigned int copy_id = i;
+            free_genome(&population->genomes[i]);
+
+            population->genomes[i] = combine_genomes(genome1, genome2);
         }
     }
 }
@@ -347,9 +407,8 @@ float calculate_genetic_distance(Genome *genome_a, Genome *genome_b)
     float bias_diff = 0;
     int matching = 0;
 
+    // compare edges
     int max_edge_innovation = fmax(genome_a->edges[genome_a->edgeCount - 1].id, genome_b->edges[genome_b->edgeCount - 1].id);
-    int max_node_innovation = fmax(genome_a->nodes[genome_a->nodeCount - 1].id, genome_b->nodes[genome_b->nodeCount - 1].id);
-
     int i = 0, j = 0;
     while (i < genome_a->edgeCount && j < genome_b->edgeCount)
     {
@@ -388,6 +447,8 @@ float calculate_genetic_distance(Genome *genome_a, Genome *genome_b)
         excess++;
         j++;
     }
+
+    int max_node_innovation = fmax(genome_a->nodes[genome_a->nodeCount - 1].id, genome_b->nodes[genome_b->nodeCount - 1].id);
 
     float normalized_distance = 0.0f;
     if (matching > 0)

@@ -9,4 +9,5 @@ int save_fully(Population population, char *name);
 void print_genome(Genome genome);
 float get_random_numberf(float min, float max);
 unsigned int get_random_unsigned_int();
+int max(int a, int b);
 char *itoa(int num);

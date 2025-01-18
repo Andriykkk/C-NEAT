@@ -18,15 +18,13 @@
 
 #include <fcntl.h>
 
-// TODO: add combining genomes
-// TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
 // TODO: add nodes biases to difference between species
 // TODO: watct at saved websites to make better neat
-// TODO: add function to crossover genomes https://www.youtube.com/watch?v=yVtdp1kF0I4&list=PL9WkKCom5t9_2VBiwERbNECPNJNPn2wkk&index=53
 // TODO: add more mutations
 // 		edge: disable, enable, /delete/,
 // 		node:  /delete/,
 // 		crossover: nodes, edges
+// TODO: remake finishing condition, while loop will work as many times as genome wants, this also will be mutation
 // TODO: add adjactable input size, mutation ranges, several mutations per generation, how many times loop work in one generation
 // TODO: add backpropagation for each generation like in rnn
 // TODO: deal with growing genomes, with big genomes it harder and harder to divide on species, add mutations that mean something, etc.
